@@ -1,57 +1,78 @@
 # AGENTS.md — MF Motion Gen 2.0
 
-## Identity
-- Product: **MF Motion Gen**
+## Project identity
+- Product name: **MF Motion Gen**
 - Version: **2.0**
-- This is a clean V2 repository.
-- Do not copy, depend on, or assume compatibility with V1 unless the product owner explicitly approves it.
+- Windows desktop target.
+- This is a clean V2 project. V1 source and architecture are not a baseline unless the product owner explicitly approves reuse.
 
-## Roles
+## Roles and workflow
 - ChatGPT: Project Manager, Technical Architect, reviewer.
-- User: Product Owner and approver of scope/major decisions.
+- User: Product Owner and decision approver.
 - Antigravity: implementation agent.
-- Claude continues to own V1 separately.
+- Claude continues work on V1 separately.
 
 ## Product direction
-Intended workflow: author motion externally (initially Gemini AI Studio) as an HTML-based project → import into MF Motion Gen → validate → preview/seek → render → export.
+The initial workflow is:
+1. User authors motion graphics externally (initially Gemini AI Studio).
+2. User pastes/imports HTML or imports a project containing local assets.
+3. MF Motion Gen validates and previews the composition.
+4. User seeks through the timeline and selects output settings.
+5. MF Motion Gen renders and exports video.
 
-Initially this is an import, preview, and rendering studio—not built-in prompt-to-motion generation.
+This is initially an import, preview, and rendering studio—not a built-in text-to-motion editor.
+
+## Current technical recommendation
+Electron + React/TypeScript UI, with HyperFrames as the leading HTML-to-video engine candidate, GSAP as the first seekable animation contract, and FFmpeg for encoding.
+
+This recommendation is provisional. Do not begin broad implementation until the POC and technical decision gate are approved. HyperFrames Frame Adapter API is currently experimental; pin versions and hide it behind an MF internal adapter.
 
 ## Non-negotiable requirements
 - Visual quality is a release gate against user-provided reference videos.
-- Preview and export must match.
-- Rendering must support deterministic absolute-time seeking.
-- Imported projects are untrusted and must be isolated from privileged desktop capabilities.
-- No V1 architecture or source reuse by default.
-- Do not claim arbitrary HTML compatibility without a documented, tested contract.
+- Preview and export must match at equal timestamps.
+- Rendering must use deterministic, absolute frame seeking.
+- Imported HTML/JS is untrusted and must be isolated from privileged app capabilities.
+- No arbitrary HTML compatibility claims without a documented and tested support contract.
+- No V1 code or architecture reuse by default.
 
 ## Implementation workflow
 Before substantial coding, provide:
 1. Understanding of the requirement.
-2. Proposed implementation.
-3. Affected files/modules.
+2. Proposed implementation and why.
+3. Affected modules/files.
 4. Risks and edge cases.
 5. Test and acceptance plan.
 
-Follow approved PRD, technical design, ADRs, and issues. Do not silently change scope, architecture, package schema, or runtime contract. Prefer small reviewable changes. Explain dependency additions and review maintenance, licensing, and security. Keep secrets out of source control and logs. Do not claim success without running tests or presenting evidence.
+Follow approved PRD, technical design, technology evaluation, ADRs, and issues. Do not silently change product scope, import contract, runtime, or dependency choices. Prefer small reviewable changes. Explain dependency additions and review maintenance, license, and security implications. Do not claim success without test evidence.
 
-## Quality/testing
-- Check visual changes against approved benchmark projects.
-- Test exact timestamps, not only real-time playback.
-- Test first frame, last frame, transitions, and representative midpoints.
-- Test missing assets, font failures, runtime exceptions, cancellation, and repeated renders.
+## HTML and rendering rules
+- Target a documented MF Motion HTML profile.
+- Prefer paused GSAP timelines with deterministic seek.
+- Do not depend on wall-clock timers, unseeded randomness, or render-time external network assets.
+- Ensure local fonts and images are ready before capture.
+- Arbitrary HTML is not automatically render-ready.
+- Keep Canvas `renderFrame` mode separate if it is adopted.
+
+## Quality and testing
+- Compare output against approved benchmark videos.
+- Test first/last frame, transitions, and representative middle frames.
+- Test random/backward seeks and repeat rendering.
 - Compare preview captures and exported frames at identical timestamps.
+- Benchmark 1080p30, 4K30, and 4K60.
+- Test transparent MOV output if included.
+- Test missing assets, font failures, runtime exceptions, cancellation, timeouts, process crash, and recovery.
 - Report limitations honestly.
 
 ## Security baseline
 - Treat imported HTML, JavaScript, CSS, SVG, images, and archives as untrusted.
 - Never expose Node, filesystem, shell, process, credentials, or privileged IPC to imported content.
-- Use restrictive CSP and default-deny network access unless explicitly approved.
-- Validate archive paths and enforce resource/time limits.
-- Do not treat a Web Worker alone as a complete sandbox.
+- Use a separate renderer process/context, Chromium sandboxing, context isolation, restrictive CSP, and default-deny network access.
+- Disable unrestricted navigation, popups, downloads, and permission prompts.
+- Validate archive paths and enforce project-size, memory, and execution-time limits.
+- Do not treat a Web Worker or browser sandbox alone as a complete security strategy.
 
 ## Git hygiene
 - Use feature branches for non-trivial changes.
 - Use descriptive commits.
-- Never force-push or rewrite shared history without explicit approval.
-- Do not commit secrets, local caches, build outputs, or user-generated renders unless required.
+- Never force-push or rewrite shared history without approval.
+- Do not commit secrets, local caches, build outputs, or user-generated renders unless explicitly required.

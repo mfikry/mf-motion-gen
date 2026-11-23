@@ -13,6 +13,8 @@ Thumbs.db
 .vscode/
 .idea/
 renders/
+tmp/
+cache/
 *.mp4
 *.mov
 *.webm
