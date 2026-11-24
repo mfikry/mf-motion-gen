@@ -18,3 +18,13 @@ cache/
 *.mp4
 *.mov
 *.webm
+
+# POC Spike temporary runtimes, caches, and test artifacts
+poc/hyperframes-spike/tools/node22/node.exe
+.hyperframes/
+poc/**/.hyperframes/
+poc/**/previews/
+poc/hyperframes-spike/tests/output-determinism/*.png
+poc/hyperframes-spike/tests/snap1/
+poc/hyperframes-spike/tests/snap2/
+**/.capture-owner.json

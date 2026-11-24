@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Breaking News Broadcast Motion Graphic</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      background: #020817;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    }
+
+    #root {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background: #031130;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Full-bleed layers */
+    .layer {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    /* 1. Background Atmosphere */
+    #bg-backdrop {
+      background:
+        radial-gradient(circle at 50% 48%, rgba(33, 126, 255, 0.58) 0%, rgba(16, 74, 184, 0.44) 34%, rgba(5, 29, 86, 0.85) 68%, #020a21 100%),
+        linear-gradient(180deg, #041338 0%, #07225a 50%, #020b24 100%);
+    }
+
+    #bg-stripes {
+      position: absolute;
+      inset: -180px -240px;
+      display: flex;
+      justify-content: space-between;
+      transform: rotate(10.5deg);
+      opacity: 0.9;
+    }
+
+    .bg-stripe {
+      height: 100%;
+      background: linear-gradient(
+        180deg,
+        rgba(46, 130, 255, 0.03) 0%,
+        rgba(70, 155, 255, 0.14) 50%,
+        rgba(30, 100, 220, 0.03) 100%
+      );
+    }
+
+    /* Halftone dot bands on left and right */
+    #bg-halftone-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0.42;
+    }
+
+    /* 2. Globe Stage */
+    #globe-stage {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #globe-svg {
+      width: 1920px;
+      height: 1080px;
+      overflow: visible;
+    }
+
+    /* 3. Center Headline Lockup */
+    #headline-stage {
+      position: absolute;
+      inset: 0;
+    }
+
+    /* Blue NEWS Backing Panel */
+    #blue-panel-wrap {
+      position: absolute;
+      left: 462px;
+      top: 472px;
+      width: 996px;
+      height: 196px;
+      transform-origin: center center;
+    }
+
+    #blue-panel {
+      width: 100%;
+      height: 100%;
+      transform: skewX(-11deg);
+      background: linear-gradient(
+        180deg,
+        rgba(28, 108, 240, 0.94) 0%,
+        rgba(12, 69, 186, 0.95) 54%,
+        rgba(7, 42, 132, 0.97) 100%
+      );
+      border: 2px solid rgba(118, 184, 255, 0.52);
+      box-shadow:
+        0 20px 52px rgba(2, 10, 38, 0.68),
+        inset 0 2px 14px rgba(145, 205, 255, 0.35),
+        inset 0 -10px 26px rgba(2, 18, 70, 0.55);
+    }
+
+    /* Red BREAKING Panel */
+    #breaking-panel-wrap {
+      position: absolute;
+      left: 556px;
+      top: 374px;
+      width: 590px;
+      height: 92px;
+      transform-origin: left center;
+    }
+
+    #breaking-panel {
+      width: 100%;
+      height: 100%;
+      transform: skewX(-11deg);
+      background: linear-gradient(180deg, #f32525 0%, #d40e0e 56%, #aa0707 100%);
+      border: 3.5px solid #ffffff;
+      box-shadow:
+        0 14px 36px rgba(2, 8, 30, 0.65),
+        inset 0 2px 6px rgba(255, 190, 190, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 26px;
+    }
+
+    #breaking-text {
+      color: #ffffff;
+      font-size: 64px;
+      font-weight: 900;
+      letter-spacing: 0.035em;
+      line-height: 1;
+      text-transform: uppercase;
+      text-shadow: 0 3px 8px rgba(70, 0, 0, 0.45);
+    }
+
+    /* Yellow LIVE Badge */
+    #live-badge-wrap {
+      position: absolute;
+      left: 1168px;
+      top: 374px;
+      width: 244px;
+      height: 92px;
+      transform-origin: center center;
+    }
+
+    #live-badge {
+      width: 100%;
+      height: 100%;
+      transform: skewX(-11deg);
+      background: linear-gradient(180deg, #ffe036 0%, #f7b900 100%);
+      border: 3.5px solid #ffffff;
+      box-shadow:
+        0 14px 34px rgba(2, 8, 30, 0.6),
+        inset 0 2px 6px rgba(255, 252, 210, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+    }
+
+    #live-dot {
+      width: 19px;
+      height: 19px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #ff4747 0%, #db0909 75%);
+      box-shadow: 0 0 8px rgba(220, 10, 10, 0.65);
+      flex-shrink: 0;
+    }
+
+    #live-badge-text {
+      color: #081229;
+      font-size: 56px;
+      font-weight: 900;
+      letter-spacing: 0.03em;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    /* Huge 3D NEWS Text */
+    #news-text-wrap {
+      position: absolute;
+      left: 462px;
+      top: 462px;
+      width: 996px;
+      height: 214px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform-origin: center center;
+    }
+
+    #news-text-inner {
+      position: relative;
+      transform: skewX(-11deg);
+      font-size: 204px;
+      font-weight: 900;
+      letter-spacing: 0.045em;
+      line-height: 0.92;
+      text-transform: uppercase;
+    }
+
+    #news-text-shadow {
+      position: absolute;
+      inset: 0;
+      color: #061c52;
+      transform: translate(5px, 9px);
+      filter: blur(2px);
+      opacity: 0.85;
+    }
+
+    #news-text-main {
+      position: relative;
+      color: #ffffff;
+      text-shadow:
+        0 2px 0 #cbd9f2,
+        0 5px 0 #93addb,
+        0 8px 18px rgba(3, 14, 48, 0.68);
+    }
+
+    /* Transient Light Sheen */
+    #title-light-sheen {
+      position: absolute;
+      left: 440px;
+      top: 360px;
+      width: 1040px;
+      height: 320px;
+      overflow: hidden;
+      transform: skewX(-11deg);
+    }
+
+    #light-sheen-bar {
+      position: absolute;
+      top: -40px;
+      left: -240px;
+      width: 180px;
+      height: 420px;
+      background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(215, 238, 255, 0.42) 50%,
+        rgba(255, 255, 255, 0) 100%
+      );
+      filter: blur(8px);
+    }
+
+    /* 4. Bottom News Ticker */
+    #ticker-bar-wrap {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 24px;
+      height: 66px;
+      display: flex;
+      align-items: stretch;
+      background: rgba(4, 14, 40, 0.94);
+      border-top: 2px solid #2d87ff;
+      border-bottom: 1px solid rgba(45, 135, 255, 0.35);
+      box-shadow: 0 -8px 28px rgba(2, 10, 32, 0.6);
+      overflow: hidden;
+    }
+
+    #ticker-live-box {
+      position: relative;
+      z-index: 2;
+      width: 158px;
+      background: linear-gradient(180deg, #e51919 0%, #b50909 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      box-shadow: 6px 0 18px rgba(0, 0, 0, 0.45);
+      flex-shrink: 0;
+    }
+
+    #ticker-viewport {
+      position: relative;
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      mask-image: linear-gradient(90deg, transparent 0%, #000 3%, #000 97%, transparent 100%);
+      -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 3%, #000 97%, transparent 100%);
+    }
+
+    #ticker-track {
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+      will-change: transform;
+    }
+
+    .ticker-segment {
+      display: flex;
+      align-items: center;
+      color: #eef4ff;
+      font-size: 27px;
+      font-weight: 700;
+      letter-spacing: 0.055em;
+      text-transform: uppercase;
+    }
+
+    .ticker-bullet {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #4ca3ff;
+      margin: 0 38px;
+      box-shadow: 0 0 8px rgba(76, 163, 255, 0.7);
+    }
+  </style>
+</head>
+<body>
+  <div
+    id="root"
+    data-composition-id="main"
+    data-start="0"
+    data-duration="10"
+    data-width="1920"
+    data-height="1080"
+    data-fps="30"
+  >
+    <!-- Persistent Background Layer -->
+    <div id="bg-backdrop" class="layer" data-start="0" data-duration="10">
+      <div id="bg-stripes">
+        <div class="bg-stripe" style="width: 118px; opacity: 0.55;"></div>
+        <div class="bg-stripe" style="width: 96px; opacity: 0.85;"></div>
+        <div class="bg-stripe" style="width: 132px; opacity: 0.5;"></div>
+        <div class="bg-stripe" style="width: 110px; opacity: 0.9;"></div>
+        <div class="bg-stripe" style="width: 84px; opacity: 0.65;"></div>
+        <div class="bg-stripe" style="width: 140px; opacity: 0.95;"></div>
+        <div class="bg-stripe" style="width: 94px; opacity: 0.6;"></div>
+        <div class="bg-stripe" style="width: 122px; opacity: 0.85;"></div>
+        <div class="bg-stripe" style="width: 108px; opacity: 0.5;"></div>
+        <div class="bg-stripe" style="width: 118px; opacity: 0.75;"></div>
+      </div>
+
+      <svg id="bg-halftone-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="halftone-mask-grad-l" cx="22%" cy="46%" r="36%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+            <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+          </radialGradient>
+          <radialGradient id="halftone-mask-grad-r" cx="80%" cy="50%" r="36%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+            <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+          </radialGradient>
+          <mask id="halftone-mask">
+            <rect width="1920" height="1080" fill="#000000" />
+            <rect width="1920" height="1080" fill="url(#halftone-mask-grad-l)" />
+            <rect width="1920" height="1080" fill="url(#halftone-mask-grad-r)" />
+          </mask>
+        </defs>
+        <g id="halftone-dots" mask="url(#halftone-mask)"></g>
+      </svg>
+    </div>
+
+    <!-- Persistent Deterministic Sparkles -->
+    <svg
+      id="bg-sparkles"
+      class="layer"
+      viewBox="0 0 1920 1080"
+      data-start="0"
+      data-duration="10"
+      xmlns="http://www.w3.org/2000/svg"
+    ></svg>
+
+    <!-- Persistent Dotted Wireframe Globe & Orbit -->
+    <div id="globe-stage" class="layer" data-start="0" data-duration="10">
+      <svg id="globe-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="globe-sphere-grad" cx="46%" cy="42%" r="55%">
+            <stop offset="0%" stop-color="#4ba7ff" stop-opacity="0.28" />
+            <stop offset="65%" stop-color="#196be6" stop-opacity="0.24" />
+            <stop offset="100%" stop-color="#0b3fa3" stop-opacity="0.45" />
+          </radialGradient>
+          <radialGradient id="globe-rim-glow" cx="50%" cy="50%" r="52%">
+            <stop offset="72%" stop-color="#58b0ff" stop-opacity="0" />
+            <stop offset="94%" stop-color="#76c4ff" stop-opacity="0.26" />
+            <stop offset="100%" stop-color="#9ad8ff" stop-opacity="0.52" />
+          </radialGradient>
+          <radialGradient id="orb-flare-grad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="1" />
+            <stop offset="22%" stop-color="#dff6ff" stop-opacity="0.95" />
+            <stop offset="52%" stop-color="#60baff" stop-opacity="0.48" />
+            <stop offset="100%" stop-color="#2b84ff" stop-opacity="0" />
+          </radialGradient>
+          <clipPath id="globe-clip">
+            <circle cx="960" cy="520" r="372" />
+          </clipPath>
+        </defs>
+
+        <!-- Back half of tilted orbit ellipse -->
+        <path
+          id="orbit-back"
+          d=""
+          fill="none"
+          stroke="rgba(165, 215, 255, 0.36)"
+          stroke-width="2"
+        />
+
+        <!-- Orb when behind globe -->
+        <g id="orb-back-group" opacity="0">
+          <circle id="orb-back-glow" cx="0" cy="0" r="46" fill="url(#orb-flare-grad)" />
+          <circle id="orb-back-core" cx="0" cy="0" r="7" fill="#ffffff" />
+        </g>
+
+        <!-- Globe Sphere -->
+        <g id="globe-core">
+          <circle cx="960" cy="520" r="372" fill="url(#globe-sphere-grad)" />
+          <circle cx="960" cy="520" r="372" fill="url(#globe-rim-glow)" />
+
+          <!-- Subtle latitude/longitude wireframe arcs -->
+          <g clip-path="url(#globe-clip)" opacity="0.22" stroke="#8dc8ff" stroke-width="1" fill="none">
+            <ellipse cx="960" cy="520" rx="372" ry="118" />
+            <ellipse cx="960" cy="520" rx="372" ry="245" />
+            <ellipse cx="960" cy="520" rx="135" ry="372" />
+            <ellipse cx="960" cy="520" rx="265" ry="372" />
+            <line x1="588" y1="520" x2="1332" y2="520" />
+            <line x1="960" y1="148" x2="960" y2="892" />
+          </g>
+
+          <!-- Dotted Continents -->
+          <g id="globe-dots-back" clip-path="url(#globe-clip)"></g>
+          <g id="globe-dots-front" clip-path="url(#globe-clip)"></g>
+
+          <!-- Outer crisp rim -->
+          <circle
+            cx="960"
+            cy="520"
+            r="372"
+            fill="none"
+            stroke="rgba(175, 222, 255, 0.56)"
+            stroke-width="2.2"
+          />
+        </g>
+
+        <!-- Front half of tilted orbit ellipse -->
+        <path
+          id="orbit-front"
+          d=""
+          fill="none"
+          stroke="rgba(210, 238, 255, 0.68)"
+          stroke-width="2.4"
+        />
+
+        <!-- Orb when in front of globe -->
+        <g id="orb-front-group">
+          <circle id="orb-front-glow" cx="0" cy="0" r="54" fill="url(#orb-flare-grad)" />
+          <circle id="orb-front-core" cx="0" cy="0" r="8.5" fill="#ffffff" />
+        </g>
+      </svg>
+    </div>
+
+    <!-- Center Headline Lockup -->
+    <div id="headline-stage">
+      <!-- Blue Panel -->
+      <div id="blue-panel-wrap" data-start="0.4" data-duration="8.6">
+        <div id="blue-panel"></div>
+      </div>
+
+      <!-- Red BREAKING Panel -->
+      <div id="breaking-panel-wrap" data-start="0.5" data-duration="8.5">
+        <div id="breaking-panel">
+          <span id="breaking-text">BREAKING</span>
+        </div>
+      </div>
+
+      <!-- Huge NEWS Typography (persists into 00:09 embossed dark-blue state) -->
+      <div id="news-text-wrap" data-start="1.2" data-duration="8.8">
+        <div id="news-text-inner">
+          <div id="news-text-shadow" aria-hidden="true">NEWS</div>
+          <div id="news-text-main">NEWS</div>
+        </div>
+      </div>
+
+      <!-- Yellow LIVE Badge (moves to top-right at 00:09) -->
+      <div id="live-badge-wrap" data-start="2.2" data-duration="7.8">
+        <div id="live-badge">
+          <span id="live-dot"></span>
+          <span id="live-badge-text">LIVE</span>
+        </div>
+      </div>
+
+      <!-- Transient Specular Light Sheen on Entrance -->
+      <div id="title-light-sheen" data-start="1.4" data-duration="1.2">
+        <div id="light-sheen-bar"></div>
+      </div>
+    </div>
+
+    <!-- Bottom News Ticker -->
+    <div id="ticker-bar-wrap" data-start="2.4" data-duration="6.4">
+      <div id="ticker-live-box">LIVE</div>
+      <div id="ticker-viewport">
+        <div id="ticker-track">
+          <div class="ticker-segment">
+            <span>WEATHER ALERT</span><span class="ticker-bullet"></span>
+            <span>SPORTS HIGHLIGHTS</span><span class="ticker-bullet"></span>
+            <span>TECH SUMMIT LIVE</span><span class="ticker-bullet"></span>
+            <span>GLOBAL HEADLINES</span><span class="ticker-bullet"></span>
+            <span>WORLD UPDATE</span><span class="ticker-bullet"></span>
+            <span>MARKETS REACT</span><span class="ticker-bullet"></span>
+          </div>
+          <div class="ticker-segment" aria-hidden="true">
+            <span>WEATHER ALERT</span><span class="ticker-bullet"></span>
+            <span>SPORTS HIGHLIGHTS</span><span class="ticker-bullet"></span>
+            <span>TECH SUMMIT LIVE</span><span class="ticker-bullet"></span>
+            <span>GLOBAL HEADLINES</span><span class="ticker-bullet"></span>
+            <span>WORLD UPDATE</span><span class="ticker-bullet"></span>
+            <span>MARKETS REACT</span><span class="ticker-bullet"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/gsap.min.js"></script>
+  <script>
+    window.__timelines = window.__timelines || {};
+
+    (() => {
+      const SVG_NS = "http://www.w3.org/2000/svg";
+
+      // Deterministic PRNG (Mulberry32) for static decorative placement
+      function createRng(seed) {
+        let a = seed >>> 0;
+        return function () {
+          a |= 0;
+          a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      // 1. Build halftone dot matrix
+      const halftoneGroup = document.getElementById("halftone-dots");
+      for (let x = 24; x < 1920; x += 22) {
+        for (let y = 120; y < 920; y += 22) {
+          const c = document.createElementNS(SVG_NS, "circle");
+          c.setAttribute("cx", x);
+          c.setAttribute("cy", y);
+          c.setAttribute("r", "2.1");
+          c.setAttribute("fill", "#7ec2ff");
+          halftoneGroup.appendChild(c);
+        }
+      }
+
+      // 2. Build deterministic sparkles
+      const sparklesSvg = document.getElementById("bg-sparkles");
+      const rng = createRng(48271);
+      const sparkleNodes = [];
+      for (let i = 0; i < 48; i++) {
+        const cx = Math.round(rng() * 1900 + 10);
+        const cy = Math.round(rng() * 1000 + 20);
+        const r = (1.1 + rng() * 2.1).toFixed(2);
+        const baseOp = 0.25 + rng() * 0.55;
+        const c = document.createElementNS(SVG_NS, "circle");
+        c.setAttribute("cx", cx);
+        c.setAttribute("cy", cy);
+        c.setAttribute("r", r);
+        c.setAttribute("fill", rng() > 0.35 ? "#cbe8ff" : "#7dc0ff");
+        c.setAttribute("opacity", baseOp.toFixed(2));
+        sparklesSvg.appendChild(c);
+        sparkleNodes.push({
+          el: c,
+          baseOp,
+          phase: rng() * Math.PI * 2
+        });
+      }
+
+      // 3. Build 3D Dotted Globe from simplified continent polygons [lat, lon]
+      const CONTINENTS = [
+        // North America
+        [
+          [65, -165], [70, -140], [68, -95], [60, -65], [45, -62], [30, -81],
+          [25, -80], [28, -96], [18, -95], [15, -88], [10, -84], [16, -98],
+          [24, -110], [32, -117], [48, -125], [58, -138]
+        ],
+        // Greenland
+        [
+          [78, -70], [82, -30], [72, -22], [60, -44], [66, -54]
+        ],
+        // South America
+        [
+          [12, -72], [10, -62], [4, -51], [-5, -35], [-15, -39], [-23, -42],
+          [-35, -54], [-52, -68], [-54, -72], [-40, -73], [-20, -70], [-5, -81], [5, -77]
+        ],
+        // Europe
+        [
+          [36, -9], [43, -9], [48, -4], [52, 4], [58, 6], [64, 11], [70, 22],
+          [69, 45], [60, 58], [48, 45], [42, 29], [38, 23], [40, 16], [43, 12],
+          [41, 2], [36, -5]
+        ],
+        // Africa
+        [
+          [35, -6], [37, 10], [32, 15], [31, 32], [22, 37], [12, 44], [11, 51],
+          [2, 45], [-10, 40], [-25, 35], [-34, 20], [-33, 18], [-18, 12], [-5, 12],
+          [4, 9], [5, -5], [12, -17], [21, -17]
+        ],
+        // Madagascar
+        [
+          [-12, 49], [-18, 49], [-25, 47], [-25, 44], [-16, 45]
+        ],
+        // Asia
+        [
+          [42, 29], [60, 58], [72, 75], [74, 110], [70, 145], [66, 172],
+          [58, 160], [50, 142], [40, 130], [35, 129], [31, 122], [22, 114],
+          [12, 109], [2, 103], [8, 98], [18, 96], [22, 90], [16, 81], [8, 77],
+          [22, 69], [25, 62], [27, 56], [13, 45], [22, 38], [32, 35], [37, 35], [40, 27]
+        ],
+        // Japan
+        [
+          [32, 131], [38, 141], [44, 145], [42, 140], [35, 136]
+        ],
+        // Australia
+        [
+          [-12, 130], [-12, 136], [-16, 139], [-11, 142], [-20, 149], [-28, 153],
+          [-38, 148], [-36, 138], [-32, 128], [-34, 115], [-22, 114], [-15, 124]
+        ]
+      ];
+
+      function pointInPolygon(lat, lon, poly) {
+        let inside = false;
+        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+          const yi = poly[i][0], xi = poly[i][1];
+          const yj = poly[j][0], xj = poly[j][1];
+          const intersect =
+            (yi > lat) !== (yj > lat) &&
+            lon < ((xj - xi) * (lat - yi)) / (yj - yi + 1e-9) + xi;
+          if (intersect) inside = !inside;
+        }
+        return inside;
+      }
+
+      const landPoints = [];
+      for (let lat = -60; lat <= 78; lat += 3.6) {
+        const cosLat = Math.max(0.25, Math.cos((lat * Math.PI) / 180));
+        const lonStep = 3.6 / cosLat;
+        for (let lon = -175; lon <= 178; lon += lonStep) {
+          let isLand = false;
+          for (let p = 0; p < CONTINENTS.length; p++) {
+            if (pointInPolygon(lat, lon, CONTINENTS[p])) {
+              isLand = true;
+              break;
+            }
+          }
+          if (isLand) {
+            landPoints.push({
+              latRad: (lat * Math.PI) / 180,
+              lonRad: (lon * Math.PI) / 180
+            });
+          }
+        }
+      }
+
+      const dotsBackGroup = document.getElementById("globe-dots-back");
+      const dotsFrontGroup = document.getElementById("globe-dots-front");
+      const dotElements = landPoints.map((pt) => {
+        const elBack = document.createElementNS(SVG_NS, "circle");
+        elBack.setAttribute("r", "2.1");
+        elBack.setAttribute("fill", "#62b5ff");
+        dotsBackGroup.appendChild(elBack);
+
+        const elFront = document.createElementNS(SVG_NS, "circle");
+        elFront.setAttribute("r", "2.7");
+        elFront.setAttribute("fill", "#bfe3ff");
+        dotsFrontGroup.appendChild(elFront);
+
+        return {
+          pt,
+          elBack,
+          elFront
+        };
+      });
+
+      const GLOBE_CX = 960;
+      const GLOBE_CY = 520;
+      const GLOBE_R = 370;
+      const TILT_X = 0.24; // slight downward tilt showing northern hemisphere clearly
+
+      const globeState = { rotDeg: -14 };
+
+      function renderGlobe() {
+        const rotRad = (globeState.rotDeg * Math.PI) / 180;
+        const cosTilt = Math.cos(TILT_X);
+        const sinTilt = Math.sin(TILT_X);
+
+        for (let i = 0; i < dotElements.length; i++) {
+          const item = dotElements[i];
+          const lat = item.pt.latRad;
+          const lon = item.pt.lonRad + rotRad;
+
+          const cosLat = Math.cos(lat);
+          const x = cosLat * Math.sin(lon);
+          const y0 = Math.sin(lat);
+          const z0 = cosLat * Math.cos(lon);
+
+          // Tilt around X axis
+          const y = y0 * cosTilt - z0 * sinTilt;
+          const z = y0 * sinTilt + z0 * cosTilt;
+
+          const sx = (GLOBE_CX + x * GLOBE_R).toFixed(1);
+          const sy = (GLOBE_CY - y * GLOBE_R).toFixed(1);
+
+          if (z >= 0) {
+            const frontOp = (0.28 + 0.68 * Math.pow(z, 0.55)).toFixed(2);
+            const frontR = (1.8 + 1.2 * z).toFixed(2);
+            item.elFront.setAttribute("cx", sx);
+            item.elFront.setAttribute("cy", sy);
+            item.elFront.setAttribute("r", frontR);
+            item.elFront.setAttribute("opacity", frontOp);
+            item.elBack.setAttribute("opacity", "0");
+          } else {
+            const backOp = (0.14 * (1 + z * 0.6)).toFixed(2);
+            item.elBack.setAttribute("cx", sx);
+            item.elBack.setAttribute("cy", sy);
+            item.elBack.setAttribute("opacity", Math.max(0.03, backOp).toFixed(2));
+            item.elFront.setAttribute("opacity", "0");
+          }
+        }
+      }
+
+      // 4. Build Tilted Orbit Paths (split into back and front arcs)
+      const ORBIT_RX = 492;
+      const ORBIT_RY = 132;
+      const ORBIT_TILT = (-21.5 * Math.PI) / 180;
+
+      function orbitPoint(theta) {
+        const lx = ORBIT_RX * Math.cos(theta);
+        const ly = ORBIT_RY * Math.sin(theta);
+        const cosT = Math.cos(ORBIT_TILT);
+        const sinT = Math.sin(ORBIT_TILT);
+        return {
+          x: GLOBE_CX + lx * cosT - ly * sinT,
+          y: GLOBE_CY + lx * sinT + ly * cosT
+        };
+      }
+
+      function buildArcPath(startTheta, endTheta, steps) {
+        let d = "";
+        for (let i = 0; i <= steps; i++) {
+          const t = startTheta + ((endTheta - startTheta) * i) / steps;
+          const p = orbitPoint(t);
+          d += (i === 0 ? "M" : "L") + p.x.toFixed(1) + "," + p.y.toFixed(1) + " ";
+        }
+        return d;
+      }
+
+      // Back half: theta from PI to 2*PI (top/back of tilted ellipse)
+      document.getElementById("orbit-back").setAttribute("d", buildArcPath(Math.PI, Math.PI * 2, 64));
+      // Front half: theta from 0 to PI (bottom/front of tilted ellipse)
+      document.getElementById("orbit-front").setAttribute("d", buildArcPath(0, Math.PI, 64));
+
+      const orbBackGroup = document.getElementById("orb-back-group");
+      const orbBackGlow = document.getElementById("orb-back-glow");
+      const orbBackCore = document.getElementById("orb-back-core");
+      const orbFrontGroup = document.getElementById("orb-front-group");
+      const orbFrontGlow = document.getElementById("orb-front-glow");
+      const orbFrontCore = document.getElementById("orb-front-core");
+
+      // Starting angle at ~-0.25 rad places the flare right at the 2 o'clock top-right edge (matching 00:00)
+      const orbitState = { angle: -0.22 };
+
+      function renderOrbit() {
+        const p = orbitPoint(orbitState.angle);
+        const normAngle = ((orbitState.angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+        const isFront = normAngle >= 0 && normAngle <= Math.PI;
+
+        if (isFront) {
+          orbFrontGroup.setAttribute("opacity", "1");
+          orbFrontGlow.setAttribute("cx", p.x.toFixed(1));
+          orbFrontGlow.setAttribute("cy", p.y.toFixed(1));
+          orbFrontCore.setAttribute("cx", p.x.toFixed(1));
+          orbFrontCore.setAttribute("cy", p.y.toFixed(1));
+          orbBackGroup.setAttribute("opacity", "0");
+        } else {
+          orbBackGroup.setAttribute("opacity", "0.75");
+          orbBackGlow.setAttribute("cx", p.x.toFixed(1));
+          orbBackGlow.setAttribute("cy", p.y.toFixed(1));
+          orbBackCore.setAttribute("cx", p.x.toFixed(1));
+          orbBackCore.setAttribute("cy", p.y.toFixed(1));
+          orbFrontGroup.setAttribute("opacity", "0");
+        }
+      }
+
+      const sparkleState = { phase: 0 };
+      function renderSparkles() {
+        for (let i = 0; i < sparkleNodes.length; i++) {
+          const s = sparkleNodes[i];
+          const op = s.baseOp * (0.6 + 0.4 * Math.sin(sparkleState.phase + s.phase));
+          s.el.setAttribute("opacity", op.toFixed(2));
+        }
+      }
+
+      // Deterministic initial state at t=0
+      renderGlobe();
+      renderOrbit();
+      renderSparkles();
+
+      const blueWrap = document.getElementById("blue-panel-wrap");
+      const breakingWrap = document.getElementById("breaking-panel-wrap");
+      const newsWrap = document.getElementById("news-text-wrap");
+      const newsMain = document.getElementById("news-text-main");
+      const newsShadow = document.getElementById("news-text-shadow");
+      const liveBadgeWrap = document.getElementById("live-badge-wrap");
+      const liveDot = document.getElementById("live-dot");
+      const sheenBar = document.getElementById("light-sheen-bar");
+      const tickerWrap = document.getElementById("ticker-bar-wrap");
+      const tickerTrack = document.getElementById("ticker-track");
+
+      // Measure first segment width deterministically for exact seamless scroll
+      const firstSegmentWidth = tickerTrack.children[0].getBoundingClientRect().width || 2260;
+
+      // Initialize GSAP states at t=0
+      gsap.set(blueWrap, { opacity: 0, scaleX: 0.25, x: -120 });
+      gsap.set(breakingWrap, { opacity: 0, x: -240, scaleX: 0.65 });
+      gsap.set(newsWrap, { opacity: 0, scale: 1.42, y: 12 });
+      gsap.set(newsMain, {
+        color: "#dde6f4",
+        textShadow: "0 2px 0 #b8c8e8, 0 5px 0 #7b98cf, 0 8px 18px rgba(3, 14, 48, 0.68)"
+      });
+      gsap.set(liveBadgeWrap, { opacity: 0, x: -140, scale: 0.72 });
+      gsap.set(tickerWrap, { y: 95, opacity: 0 });
+      gsap.set(tickerTrack, { x: 0 });
+      gsap.set(sheenBar, { x: 0, opacity: 0 });
+      gsap.set("#bg-stripes", { x: -30 });
+
+      // Master Deterministic Timeline (10 seconds, paused)
+      const tl = gsap.timeline({ paused: true });
+
+      // Continuous background & 3D globe motion (0s -> 10s)
+      tl.to(
+        globeState,
+        {
+          rotDeg: 28,
+          duration: 10,
+          ease: "none",
+          onUpdate: renderGlobe
+        },
+        0
+      );
+
+      tl.to(
+        orbitState,
+        {
+          angle: -0.22 + Math.PI * 2,
+          duration: 9.2,
+          ease: "power1.inOut",
+          onUpdate: renderOrbit
+        },
+        0
+      );
+
+      tl.to(
+        sparkleState,
+        {
+          phase: Math.PI * 4,
+          duration: 10,
+          ease: "none",
+          onUpdate: renderSparkles
+        },
+        0
+      );
+
+      tl.to(
+        "#bg-stripes",
+        {
+          x: 34,
+          duration: 10,
+          ease: "none"
+        },
+        0
+      );
+
+      // 00:00.4 -> 00:01.0: Blue panel & Red BREAKING box enter (matching frame 00:01)
+      tl.to(
+        blueWrap,
+        {
+          opacity: 1,
+          scaleX: 1,
+          x: 0,
+          duration: 0.55,
+          ease: "power3.out"
+        },
+        0.4
+      );
+
+      tl.to(
+        breakingWrap,
+        {
+          opacity: 1,
+          x: 112, // centered over blue panel before LIVE badge slides out
+          scaleX: 1,
+          duration: 0.52,
+          ease: "power3.out"
+        },
+        0.5
+      );
+
+      // 00:01.3 -> 00:02.1: Huge silver-white NEWS text slams in (matching frame 00:02)
+      tl.to(
+        newsWrap,
+        {
+          opacity: 1,
+          scale: 1,
+          y: 0,
+          duration: 0.62,
+          ease: "back.out(1.35)"
+        },
+        1.32
+      );
+
+      // Transient entrance light sheen sweep (00:01.5 -> 00:02.45)
+      tl.fromTo(
+        sheenBar,
+        { x: 0, opacity: 0 },
+        { x: 1450, opacity: 0.85, duration: 0.85, ease: "power2.inOut" },
+        1.5
+      );
+      tl.to(sheenBar, { opacity: 0, duration: 0.18 }, 2.32);
+
+      // Brighten NEWS to pure crisp white as LIVE badge enters
+      tl.to(
+        newsMain,
+        {
+          color: "#ffffff",
+          textShadow: "0 2px 0 #cbd9f2, 0 5px 0 #93addb, 0 8px 18px rgba(3, 14, 48, 0.68)",
+          duration: 0.45,
+          ease: "power2.out"
+        },
+        2.15
+      );
+
+      // 00:02.2 -> 00:02.8: BREAKING shifts left into lockup as yellow LIVE badge slides out (matching 00:03)
+      tl.to(
+        breakingWrap,
+        {
+          x: 0,
+          duration: 0.52,
+          ease: "power3.inOut"
+        },
+        2.18
+      );
+
+      tl.to(
+        liveBadgeWrap,
+        {
+          opacity: 1,
+          x: 0,
+          scale: 1,
+          duration: 0.52,
+          ease: "back.out(1.4)"
+        },
+        2.25
+      );
+
+      // 00:02.4 -> 00:03.0: Bottom ticker slides up and scrolls deterministically (00:03 -> 00:08)
+      tl.to(
+        tickerWrap,
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.52,
+          ease: "power3.out"
+        },
+        2.4
+      );
+
+      tl.to(
+        tickerTrack,
+        {
+          x: -firstSegmentWidth * 0.92,
+          duration: 6.3,
+          ease: "none"
+        },
+        2.45
+      );
+
+      // Subtle deterministic pulse on the red LIVE indicator dot (3s -> 8.5s)
+      for (let p = 0; p < 5; p++) {
+        const startT = 3.0 + p * 1.1;
+        tl.to(liveDot, { scale: 1.24, duration: 0.35, ease: "sine.inOut" }, startT);
+        tl.to(liveDot, { scale: 1.0, duration: 0.55, ease: "sine.inOut" }, startT + 0.35);
+      }
+
+      // 00:08.25 -> 00:09.0: Outro transition matching frame 00:09!
+      // Ticker exits downward
+      tl.to(
+        tickerWrap,
+        {
+          y: 95,
+          opacity: 0,
+          duration: 0.5,
+          ease: "power2.in"
+        },
+        8.25
+      );
+
+      // BREAKING red bar and blue backing bar exit
+      tl.to(
+        breakingWrap,
+        {
+          opacity: 0,
+          x: -160,
+          duration: 0.5,
+          ease: "power3.in"
+        },
+        8.3
+      );
+
+      tl.to(
+        blueWrap,
+        {
+          opacity: 0,
+          scaleX: 0.72,
+          duration: 0.52,
+          ease: "power2.in"
+        },
+        8.35
+      );
+
+      // Yellow LIVE badge moves cleanly to top-right corner (as seen in 00:09)
+      tl.to(
+        liveBadgeWrap,
+        {
+          x: 410,
+          y: -326,
+          scale: 0.88,
+          duration: 0.6,
+          ease: "power3.inOut"
+        },
+        8.35
+      );
+
+      // NEWS headline transitions to the translucent embossed dark-blue state over the globe (00:09)
+      tl.to(
+        newsMain,
+        {
+          color: "rgba(38, 82, 152, 0.76)",
+          textShadow: "0 2px 0 rgba(70, 128, 215, 0.35), 0 6px 14px rgba(2, 10, 34, 0.65)",
+          duration: 0.55,
+          ease: "power2.inOut"
+        },
+        8.4
+      );
+
+      tl.to(
+        newsShadow,
+        {
+          opacity: 0.35,
+          duration: 0.55,
+          ease: "power2.inOut"
+        },
+        8.4
+      );
+
+      // Subtle hold from 9.0s to 10.0s completing the 10-second composition
+      tl.to({}, { duration: 1.0 }, 9.0);
+
+      window.__timelines["main"] = tl;
+    })();
+  </script>
+</body>
+</html>

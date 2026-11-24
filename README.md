@@ -1,20 +1,20 @@
 # MF Motion Gen 2.0
 
-**Status:** Foundation + technology evaluation (Draft 0.2)  
-**Target:** Windows desktop  
+**Status:** Phase 4 — Application Architecture & Foundation (Phase 3 Technology Validation complete & accepted)<br>
+**Target:** Windows desktop<br>
 **Product direction:** Import HTML motion projects → preview/seek → render → export.
 
 MF Motion Gen is intended to make high-quality motion graphics from HTML-based projects authored externally (initially Gemini AI Studio). It is not initially a built-in text-to-motion generator or a full visual motion-design editor.
 
-## Current architecture recommendation (provisional)
+## Current architecture recommendation (POC-validated baseline)
 
 - Desktop shell: Electron
 - UI: React + TypeScript
-- HTML-to-video engine candidate: HyperFrames (`@hyperframes/core`, `@hyperframes/engine`, `@hyperframes/producer`)
+- HTML-to-video engine candidate: HyperFrames (`@hyperframes/core`, `@hyperframes/engine`, `@hyperframes/producer`) — accepted candidate for implementation
 - Animation timeline: GSAP paused timelines / seek-by-frame contract
 - Encoding: FFmpeg through the rendering pipeline
 
-**Nothing is frozen yet.** HyperFrames is the strongest fit found in research, but its Frame Adapter API is currently experimental and must pass our prototype and security gates before production approval.
+Phase 3 technical proof-of-concept (HyperFrames spike Round 1 and Round 2) has successfully completed and been accepted by the Product Owner. Final application architecture, IPC design, and production security isolation will be determined through formal ADRs in Phase 4.
 
 ## Documents
 

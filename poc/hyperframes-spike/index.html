@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>MF Motion Gen — HyperFrames POC Composition</title>
+    <!-- Local GSAP for 100% offline deterministic rendering -->
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      :root {
+        --bg-void: #060913;
+        --cyan-core: #00f0ff;
+        --cyan-glow: rgba(0, 240, 255, 0.45);
+        --amber-alert: #ffb300;
+        --amber-glow: rgba(255, 179, 0, 0.45);
+        --red-breach: #ff2a5f;
+        --red-glow: rgba(255, 42, 95, 0.6);
+        --text-white: #f1f5f9;
+        --text-dim: #64748b;
+        --card-bg: rgba(13, 20, 38, 0.7);
+        --card-border: rgba(0, 240, 255, 0.25);
+        --font-mono: "Consolas", "Courier New", monospace;
+        --font-ui: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html, body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg-void);
+        color: var(--text-white);
+        font-family: var(--font-ui);
+        user-select: none;
+      }
+
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: radial-gradient(circle at 50% 50%, #0d172e 0%, #060913 85%);
+      }
+
+      /* Background Grid & Decorative Layers */
+      .bg-grid {
+        position: absolute;
+        inset: 0;
+        background-size: 60px 60px;
+        background-image:
+          linear-gradient(to right, rgba(0, 240, 255, 0.05) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(0, 240, 255, 0.05) 1px, transparent 1px);
+        mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.85) 40%, transparent 80%);
+        pointer-events: none;
+      }
+
+      .ambient-glow {
+        position: absolute;
+        width: 800px;
+        height: 800px;
+        border-radius: 50%;
+        filter: blur(120px);
+        opacity: 0.25;
+        pointer-events: none;
+      }
+      .ambient-cyan {
+        top: 10%;
+        left: 20%;
+        background: var(--cyan-core);
+      }
+      .ambient-breach {
+        top: 25%;
+        right: 15%;
+        background: var(--red-breach);
+        opacity: 0;
+      }
+
+      /* Corner Brackets Frame */
+      .corner-frame {
+        position: absolute;
+        inset: 40px;
+        pointer-events: none;
+      }
+      .corner-bracket {
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        border: 2px solid var(--cyan-core);
+        opacity: 0.8;
+      }
+      .bracket-tl { top: 0; left: 0; border-right: none; border-bottom: none; }
+      .bracket-tr { top: 0; right: 0; border-left: none; border-bottom: none; }
+      .bracket-bl { bottom: 0; left: 0; border-right: none; border-top: none; }
+      .bracket-br { bottom: 0; right: 0; border-left: none; border-top: none; }
+
+      /* Top Header Bar */
+      .header-hud {
+        position: absolute;
+        top: 60px;
+        left: 80px;
+        right: 80px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+        padding-bottom: 10px;
+      }
+      .logo-group {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      .logo-icon {
+        width: 32px;
+        height: 32px;
+        fill: none;
+        stroke: var(--cyan-core);
+        stroke-width: 2;
+        filter: drop-shadow(0 0 6px var(--cyan-glow));
+      }
+      .logo-title {
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 0.25em;
+        text-transform: uppercase;
+        color: var(--text-white);
+      }
+      .logo-sub {
+        font-size: 11px;
+        font-family: var(--font-mono);
+        color: var(--cyan-core);
+        letter-spacing: 0.15em;
+      }
+      .status-badge {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 16px;
+        background: rgba(0, 240, 255, 0.08);
+        border: 1px solid var(--card-border);
+        border-radius: 4px;
+        font-family: var(--font-mono);
+        font-size: 13px;
+        letter-spacing: 0.1em;
+      }
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--cyan-core);
+        box-shadow: 0 0 10px var(--cyan-core);
+      }
+
+      /* Main Stage Layout */
+      .stage-grid {
+        position: absolute;
+        top: 150px;
+        left: 80px;
+        right: 80px;
+        bottom: 70px;
+        display: grid;
+        grid-template-columns: 580px 1fr;
+        gap: 40px;
+      }
+
+      /* Left Column: Circular Gauge & Countdown HUD */
+      .dial-card {
+        position: relative;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      }
+
+      .gauge-container {
+        position: relative;
+        width: 360px;
+        height: 360px;
+      }
+      .gauge-svg {
+        width: 100%;
+        height: 100%;
+        transform: rotate(-90deg);
+      }
+      .gauge-bg-ring {
+        fill: none;
+        stroke: rgba(255, 255, 255, 0.06);
+        stroke-width: 12;
+      }
+      .gauge-track {
+        fill: none;
+        stroke: rgba(0, 240, 255, 0.15);
+        stroke-width: 12;
+        stroke-dasharray: 6 12;
+      }
+      .gauge-meter {
+        fill: none;
+        stroke: var(--cyan-core);
+        stroke-width: 12;
+        stroke-linecap: round;
+        stroke-dasharray: 942.48; /* 2 * PI * 150 */
+        stroke-dashoffset: 942.48;
+        filter: drop-shadow(0 0 10px var(--cyan-glow));
+      }
+      .gauge-reticle {
+        position: absolute;
+        inset: 40px;
+        pointer-events: none;
+      }
+
+      .timer-display {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+      }
+      .timer-label {
+        font-family: var(--font-mono);
+        font-size: 13px;
+        letter-spacing: 0.25em;
+        color: var(--text-dim);
+        margin-bottom: 4px;
+        text-transform: uppercase;
+      }
+      .timer-value {
+        font-family: var(--font-mono);
+        font-size: 58px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--text-white);
+        text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+      }
+      .timer-status-text {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        letter-spacing: 0.15em;
+        color: var(--cyan-core);
+        margin-top: 6px;
+      }
+
+      /* Right Column: Telemetry, Linear Progress & Warning Glitch Box */
+      .telemetry-card {
+        position: relative;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        padding: 36px 40px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      }
+
+      /* Warning Breach Alert Overlay */
+      .breach-alert-box {
+        position: relative;
+        border-radius: 8px;
+        padding: 24px 28px;
+        background: rgba(255, 42, 95, 0.08);
+        border: 1px solid rgba(255, 42, 95, 0.3);
+        overflow: hidden;
+      }
+      .alert-stripes {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 6px;
+        background: repeating-linear-gradient(
+          -45deg,
+          var(--amber-alert),
+          var(--amber-alert) 12px,
+          #000 12px,
+          #000 24px
+        );
+      }
+      .alert-content {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .alert-tag {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        padding: 4px 10px;
+        background: var(--amber-alert);
+        color: #000;
+        border-radius: 2px;
+        margin-bottom: 8px;
+      }
+      .alert-heading {
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        color: var(--text-white);
+        text-transform: uppercase;
+      }
+      .alert-desc {
+        font-family: var(--font-mono);
+        font-size: 13px;
+        color: #cbd5e1;
+        margin-top: 4px;
+        letter-spacing: 0.05em;
+      }
+      .alert-action-badge {
+        padding: 10px 20px;
+        border: 1px solid rgba(255, 42, 95, 0.5);
+        background: rgba(255, 42, 95, 0.15);
+        border-radius: 4px;
+        font-family: var(--font-mono);
+        font-size: 13px;
+        font-weight: 600;
+        color: #ff6b8b;
+        letter-spacing: 0.1em;
+      }
+
+      /* Controlled Glitch Layers for Alert Box */
+      .glitch-wrapper {
+        position: relative;
+      }
+      .glitch-slice {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* Audio / Telemetry Spectrum Bars */
+      .spectrum-section {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        height: 60px;
+        margin: 10px 0;
+      }
+      .spec-bar {
+        flex: 1;
+        background: linear-gradient(to top, rgba(0, 240, 255, 0.2), var(--cyan-core));
+        border-radius: 2px;
+        height: 15%;
+        transform-origin: bottom;
+      }
+
+      /* Linear Progress Bar Section */
+      .progress-section {
+        position: relative;
+      }
+      .progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 12px;
+        font-family: var(--font-mono);
+      }
+      .progress-label {
+        font-size: 14px;
+        letter-spacing: 0.15em;
+        color: var(--text-dim);
+      }
+      .progress-val-text {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--cyan-core);
+        text-shadow: 0 0 12px var(--cyan-glow);
+      }
+      .progress-track {
+        position: relative;
+        width: 100%;
+        height: 16px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(0, 240, 255, 0.2);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .progress-fill {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #0077ff, var(--cyan-core));
+        box-shadow: 0 0 16px var(--cyan-core);
+      }
+      .progress-scan-spark {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 8px;
+        height: 100%;
+        background: #fff;
+        box-shadow: 0 0 10px #fff;
+      }
+
+      /* Segmented Sub-indicators */
+      .sub-metrics {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 14px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--text-dim);
+        letter-spacing: 0.1em;
+      }
+
+      /* Final Lockdown Shield Stamp */
+      .lockdown-stamp {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.7);
+        padding: 16px 36px;
+        background: rgba(0, 240, 255, 0.15);
+        border: 2px solid var(--cyan-core);
+        border-radius: 8px;
+        font-size: 32px;
+        font-weight: 800;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: var(--text-white);
+        box-shadow: 0 0 40px var(--cyan-glow);
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Root composition element per HyperFrames contract -->
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="8"
+      data-width="1920"
+      data-height="1080"
+      data-fps="30"
+    >
+      <!-- Background Ambient Glow -->
+      <div id="ambientCyan" class="ambient-glow ambient-cyan clip" data-start="0" data-duration="8"></div>
+      <div id="ambientBreach" class="ambient-glow ambient-breach clip" data-start="0" data-duration="8"></div>
+      <div class="bg-grid clip" data-start="0" data-duration="8"></div>
+
+      <!-- Corner Brackets -->
+      <div id="cornerFrame" class="corner-frame clip" data-start="0" data-duration="8">
+        <div class="corner-bracket bracket-tl"></div>
+        <div class="corner-bracket bracket-tr"></div>
+        <div class="corner-bracket bracket-bl"></div>
+        <div class="corner-bracket bracket-br"></div>
+      </div>
+
+      <!-- Header HUD Bar -->
+      <header id="headerHud" class="header-hud clip" data-start="0" data-duration="8">
+        <div class="logo-group">
+          <svg class="logo-icon" viewBox="0 0 24 24">
+            <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5" />
+            <circle cx="12" cy="12" r="3" fill="var(--cyan-core)" />
+          </svg>
+          <div>
+            <div class="logo-title">AEGIS CORE SYSTEM</div>
+            <div class="logo-sub">MF MOTION GEN 2.0 // SPEC PROTOCOL</div>
+          </div>
+        </div>
+
+        <div id="statusBadge" class="status-badge">
+          <div id="statusDot" class="status-dot"></div>
+          <span id="statusTextNormal">KERNEL SECURE // NOMINAL</span>
+          <span id="statusTextAlert" style="position: absolute; left: 34px; opacity: 0; color: var(--red-breach);">ANOMALY DETECTED // LEVEL-4</span>
+          <span id="statusTextLock" style="position: absolute; left: 34px; opacity: 0; color: var(--cyan-core);">PROTOCOL OMEGA // ISOLATED</span>
+        </div>
+      </header>
+
+      <!-- Stage Grid -->
+      <main class="stage-grid clip" data-start="0" data-duration="8">
+        <!-- Left Column: Circular Timer & Countdown -->
+        <div id="leftCard" class="dial-card">
+          <div class="gauge-container">
+            <svg class="gauge-svg" viewBox="0 0 360 360">
+              <circle class="gauge-bg-ring" cx="180" cy="180" r="150" />
+              <circle class="gauge-track" cx="180" cy="180" r="150" />
+              <circle id="gaugeMeter" class="gauge-meter" cx="180" cy="180" r="150" />
+            </svg>
+
+            <!-- Decorative Reticle SVG -->
+            <svg id="gaugeReticle" class="gauge-reticle" viewBox="0 0 280 280">
+              <circle cx="140" cy="140" r="130" fill="none" stroke="rgba(0, 240, 255, 0.2)" stroke-width="1" stroke-dasharray="4 8" />
+              <circle cx="140" cy="140" r="110" fill="none" stroke="rgba(0, 240, 255, 0.3)" stroke-width="1.5" stroke-dasharray="16 16" />
+              <line x1="140" y1="5" x2="140" y2="25" stroke="var(--cyan-core)" stroke-width="2" />
+              <line x1="140" y1="255" x2="140" y2="275" stroke="var(--cyan-core)" stroke-width="2" />
+              <line x1="5" y1="140" x2="25" y2="140" stroke="var(--cyan-core)" stroke-width="2" />
+              <line x1="255" y1="140" x2="275" y2="140" stroke="var(--cyan-core)" stroke-width="2" />
+            </svg>
+
+            <!-- Central Numerical Countdown Display -->
+            <div class="timer-display">
+              <div class="timer-label">CYCLE COUNTDOWN</div>
+              <div id="timerNumber" class="timer-value">08.00s</div>
+              <div style="position: relative; height: 18px; width: 100%; display: flex; justify-content: center;">
+                <span id="timerSubPass" class="timer-status-text" style="position: absolute;">LOCK STATUS: PASS</span>
+                <span id="timerSubAlert" class="timer-status-text" style="position: absolute; opacity: 0; color: var(--red-breach);">ALERT: INTRUSION ACTIVE</span>
+                <span id="timerSubSeal" class="timer-status-text" style="position: absolute; opacity: 0; color: var(--cyan-core);">SEAL SECURED</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Breach Alert, Spectrum & Precision Progress Bar -->
+        <div id="rightCard" class="telemetry-card">
+          <!-- Alert Breach Glitch Box -->
+          <div id="glitchWrapper" class="glitch-wrapper">
+            <div id="alertBox" class="breach-alert-box">
+              <div id="alertStripes" class="alert-stripes"></div>
+              <div id="alertNormalView" class="alert-content">
+                <div>
+                  <div class="alert-tag">MONITOR STATUS</div>
+                  <div class="alert-heading">NETWORK STABLE</div>
+                  <div class="alert-desc">FIREWALL INTEGRITY AT 100% — ALL PACKETS VERIFIED</div>
+                </div>
+                <div class="alert-action-badge">PORT 443 OK</div>
+              </div>
+              <div id="alertBreachView" class="alert-content" style="position: absolute; inset: 24px 28px; opacity: 0;">
+                <div>
+                  <div class="alert-tag" style="background: var(--red-breach); color: #fff;">CRITICAL ALERT</div>
+                  <div class="alert-heading" style="color: #fff;">SYSTEM BREACH ATTEMPT</div>
+                  <div class="alert-desc" style="color: #cbd5e1;">UNAUTHORIZED PACKET BURST AT GATEWAY NODE 0x9F41</div>
+                </div>
+                <div class="alert-action-badge" style="background: rgba(255, 42, 95, 0.35); border-color: var(--red-breach); color: #ff6b8b;">ENGAGING DEFENSE</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dynamic Spectrum Bars -->
+          <div>
+            <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-bottom: 6px; letter-spacing: 0.1em;">
+              TELEMETRY BUS ACTIVITY // CH-01...CH-16
+            </div>
+            <div id="spectrum" class="spectrum-section">
+              <!-- 16 telemetry bars -->
+              <div class="spec-bar"></div>
+              <div class="spec-bar"></div>
+              <div class="spec-bar"></div>
+              <div class="spec-bar"></div>
+              <div class="spec-bar"></div>
+              <div class="spec-bar"></div>
+              <div class="spec-bar"></div>
+              <div class="spec-bar"></div>
+              <div class="spec-bar"></div>
+              <div class="spec-bar"></div>
+              <div class="spec-bar"></div>
+              <div class="spec-bar"></div>
+              <div class="spec-bar"></div>
+              <div class="spec-bar"></div>
+              <div class="spec-bar"></div>
+              <div class="spec-bar"></div>
+            </div>
+          </div>
+
+          <!-- Precision Linear Progress Indicator -->
+          <div class="progress-section">
+            <div class="progress-header">
+              <div class="progress-label">CRYPTOGRAPHIC DATA SYNC</div>
+              <div id="progressValText" class="progress-val-text">0%</div>
+            </div>
+            <div class="progress-track">
+              <div id="progressFill" class="progress-fill">
+                <div class="progress-scan-spark"></div>
+              </div>
+            </div>
+            <div class="sub-metrics">
+              <span>STREAM: LOCALHOST ISOLATED</span>
+              <span id="rateMetric">RATE: 0.0 MB/S</span>
+              <span id="framesMetric">SYNC: 0 / 240 FRAMES</span>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Final Stamp Alert -->
+      <div id="lockdownStamp" class="lockdown-stamp clip" data-start="6.5" data-duration="1.5">
+        PROTOCOL ENFORCED
+      </div>
+    </div>
+
+    <!-- Paused GSAP Timeline Registration for HyperFrames -->
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      window.__timelines["main"] = tl;
+
+      // DOM Elements
+      const ambientCyan = document.getElementById("ambientCyan");
+      const ambientBreach = document.getElementById("ambientBreach");
+      const cornerFrame = document.getElementById("cornerFrame");
+      const headerHud = document.getElementById("headerHud");
+      const leftCard = document.getElementById("leftCard");
+      const rightCard = document.getElementById("rightCard");
+      const gaugeMeter = document.getElementById("gaugeMeter");
+      const gaugeReticle = document.getElementById("gaugeReticle");
+      const timerNumber = document.getElementById("timerNumber");
+      const statusBadge = document.getElementById("statusBadge");
+      const statusDot = document.getElementById("statusDot");
+      const statusTextNormal = document.getElementById("statusTextNormal");
+      const statusTextAlert = document.getElementById("statusTextAlert");
+      const statusTextLock = document.getElementById("statusTextLock");
+      const alertNormalView = document.getElementById("alertNormalView");
+      const alertBreachView = document.getElementById("alertBreachView");
+      const glitchWrapper = document.getElementById("glitchWrapper");
+      const progressFill = document.getElementById("progressFill");
+      const progressValText = document.getElementById("progressValText");
+      const rateMetric = document.getElementById("rateMetric");
+      const framesMetric = document.getElementById("framesMetric");
+      const lockdownStamp = document.getElementById("lockdownStamp");
+      const specBars = document.querySelectorAll(".spec-bar");
+      const timerSubPass = document.getElementById("timerSubPass");
+      const timerSubAlert = document.getElementById("timerSubAlert");
+      const timerSubSeal = document.getElementById("timerSubSeal");
+
+      const circumference = 942.48; // 2 * PI * 150
+
+      // Continuous Monotonic Proxies (100% deterministic & seek-reversible)
+      const timerProxy = { time: 8.0 };
+      const progProxy = { pct: 0, rate: 0, frames: 0 };
+      const gaugeProxy = { offset: circumference };
+
+      // 1. Single Continuous Countdown Timeline (8.00s -> 0.00s over 8s)
+      tl.fromTo(timerProxy,
+        { time: 8.0 },
+        {
+          time: 0.0,
+          duration: 8.0,
+          ease: "linear",
+          onUpdate: () => {
+            timerNumber.textContent = `${Math.max(0, timerProxy.time).toFixed(2)}s`;
+          }
+        },
+        0
+      );
+
+      // 2. Single Continuous Progress Timeline (0% -> 100% over 8s)
+      tl.fromTo(progProxy,
+        { pct: 0, rate: 0, frames: 0 },
+        {
+          pct: 100,
+          rate: 1024,
+          frames: 240,
+          duration: 8.0,
+          ease: "power1.inOut",
+          onUpdate: () => {
+            const p = Math.min(100, Math.max(0, progProxy.pct));
+            progressFill.style.width = `${p.toFixed(1)}%`;
+            progressValText.textContent = `${Math.round(p)}%`;
+            rateMetric.textContent = `RATE: ${progProxy.rate.toFixed(1)} MB/S`;
+            framesMetric.textContent = `SYNC: ${Math.round(progProxy.frames)} / 240 FRAMES`;
+          }
+        },
+        0
+      );
+
+      // 3. Single Continuous Gauge Arc (0 -> 100% over 8s)
+      tl.fromTo(gaugeProxy,
+        { offset: circumference },
+        {
+          offset: 0,
+          duration: 8.0,
+          ease: "power1.inOut",
+          onUpdate: () => {
+            gaugeMeter.style.strokeDashoffset = gaugeProxy.offset.toFixed(2);
+          }
+        },
+        0
+      );
+
+      // 4. Reticle continuous rotation
+      tl.to(gaugeReticle, { rotation: 360, transformOrigin: "50% 50%", duration: 8.0, ease: "none" }, 0);
+
+      // 5. Initial HUD boot transitions (0.0s - 1.0s)
+      tl.fromTo([leftCard, rightCard], { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8, ease: "power2.out" }, 0);
+      tl.fromTo(headerHud, { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.1);
+      tl.fromTo(cornerFrame, { opacity: 0 }, { opacity: 0.8, duration: 0.8, ease: "power2.out" }, 0);
+
+      // 6. Telemetry bars deterministic oscillation
+      const barHeights = [
+        [20, 65, 40, 80, 30, 90, 50, 75, 35, 85, 45, 95, 25, 70, 60, 40],
+        [80, 30, 90, 45, 75, 20, 85, 40, 95, 35, 65, 25, 70, 50, 30, 80]
+      ];
+      specBars.forEach((bar, idx) => {
+        tl.to(bar, { height: `${barHeights[0][idx]}%`, duration: 2.0, yoyo: true, repeat: 3, ease: "sine.inOut" }, 0.2);
+      });
+
+      // 7. Phase 3 Anomaly at 4.5s (Pure reversible tweens)
+      tl.to(statusDot, { backgroundColor: "#ff2a5f", boxShadow: "0 0 15px #ff2a5f", duration: 0.1 }, 4.5);
+      tl.to(statusBadge, { borderColor: "#ff2a5f", backgroundColor: "rgba(255, 42, 95, 0.15)", duration: 0.1 }, 4.5);
+      tl.to(statusTextNormal, { opacity: 0, duration: 0.1 }, 4.5);
+      tl.to(statusTextAlert, { opacity: 1, duration: 0.1 }, 4.5);
+      tl.to(alertNormalView, { opacity: 0, duration: 0.1 }, 4.5);
+      tl.to(alertBreachView, { opacity: 1, duration: 0.1 }, 4.5);
+      tl.to(timerSubPass, { opacity: 0, duration: 0.1 }, 4.5);
+      tl.to(timerSubAlert, { opacity: 1, duration: 0.1 }, 4.5);
+      tl.to(gaugeMeter, { stroke: "#ff2a5f", duration: 0.1 }, 4.5);
+      tl.to(ambientBreach, { opacity: 0.45, duration: 0.3, ease: "power2.out" }, 4.5);
+
+      // Controlled Glitch Slices
+      const glitchKeyframes = [
+        { time: 4.55, x: -8, y: 2, filter: "hue-rotate(90deg)" },
+        { time: 4.65, x: 10, y: -3, filter: "hue-rotate(240deg)" },
+        { time: 4.75, x: 0, y: 0, filter: "none" }
+      ];
+      glitchKeyframes.forEach((kf) => {
+        tl.to(glitchWrapper, { x: kf.x, y: kf.y, filter: kf.filter, duration: 0.05 }, kf.time);
+      });
+
+      // 8. Phase 4 Lockdown at 6.5s (Pure reversible tweens)
+      tl.to(statusDot, { backgroundColor: "#00f0ff", boxShadow: "0 0 20px #00f0ff", duration: 0.2 }, 6.5);
+      tl.to(statusBadge, { borderColor: "#00f0ff", backgroundColor: "rgba(0, 240, 255, 0.2)", duration: 0.2 }, 6.5);
+      tl.to(statusTextAlert, { opacity: 0, duration: 0.1 }, 6.5);
+      tl.to(statusTextLock, { opacity: 1, duration: 0.1 }, 6.5);
+      tl.to(alertBreachView, { opacity: 0, duration: 0.2 }, 6.5);
+      tl.to(timerSubAlert, { opacity: 0, duration: 0.2 }, 6.5);
+      tl.to(timerSubSeal, { opacity: 1, duration: 0.2 }, 6.5);
+      tl.to(gaugeMeter, { stroke: "#00f0ff", duration: 0.2 }, 6.5);
+      tl.to(ambientBreach, { opacity: 0, duration: 0.4 }, 6.5);
+
+      // Lockdown Stamp Entrance at 6.6s
+      tl.fromTo(lockdownStamp,
+        { opacity: 0, scale: 1.4 },
+        { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" },
+        6.6
+      );
+
+      // Initial position
+      tl.seek(0, false);
+    </script>
+  </body>
+</html>

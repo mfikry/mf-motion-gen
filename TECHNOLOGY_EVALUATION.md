@@ -1,21 +1,24 @@
 # MF Motion Gen 2.0 — Technology Evaluation
 
-**Research date:** 23 November 2026  
-**Status:** Recommendation for prototype only. No production stack is frozen.
+**Research date:** 23 November 2026 (Updated 24 November 2026 post-POC)<br>
+**Status:** Accepted technology candidate for implementation (Phase 3 POC validated; production readiness and final architecture deferred to Phase 4).
 
 ## 1. Executive recommendation
 
-The strongest current fit is:
+The accepted candidate stack for implementation is:
 
 - **Desktop shell:** Electron
 - **UI:** React + TypeScript
-- **HTML-to-video engine candidate:** HyperFrames (`@hyperframes/core`, `@hyperframes/engine`, `@hyperframes/producer`)
+- **HTML-to-video engine candidate:** HyperFrames (`@hyperframes/core`, `@hyperframes/engine`, `@hyperframes/producer`) — accepted candidate for implementation
 - **Animation timeline:** GSAP, with paused timelines that can seek to absolute time/frame
 - **Encoding:** FFmpeg through the engine/producer pipeline
 
-The central reason is alignment: the authoring source is HTML from Gemini AI Studio, and HyperFrames is specifically built around HTML compositions and deterministic frame-by-frame video rendering.
+Phase 3 POC has validated HyperFrames' HTML-first rendering, paused GSAP timeline seeking, and FFmpeg export capabilities across multiple benchmarks (Round 1 NEXUS and Round 2 Breaking News).
 
-HyperFrames is a candidate engine, not a quality guarantee. It must pass the MF Motion Gen prototype, visual benchmark, and security review.
+### Caveats & Non-Claims
+1. **Renderer Parity Caveat:** While encoder parity (ProRes vs MP4) is consistently high (SSIM > 0.978), renderer-to-mezzanine parity (Preview vs ProRes) exhibits sub-pixel Skia rasterization variations on fractional borders and skewed CSS transforms (averaging SSIM 0.9319–0.9879).
+2. **Incomplete Security Testing Caveat:** Spike tests confirmed basic offline resilience and non-execution of shell commands within the sandbox, but full production security (untrusted HTML execution, Chromium sandbox isolation, context isolation, and IPC surface lockdown in Electron) has not been tested and is an explicit release gate for Phase 4.
+3. **No Production Readiness Claim:** HyperFrames is accepted as the implementation engine for Phase 4 application development, but production readiness is not yet claimed until full desktop packaging and end-to-end integration pass in Phase 6.
 
 ## 2. Evaluation criteria
 
@@ -32,7 +35,7 @@ HyperFrames is a candidate engine, not a quality guarantee. It must pass the MF 
 
 | Candidate | Fit for this product | Decision |
 |---|---|---|
-| **HyperFrames** | HTML-first; Chrome frame capture; deterministic seek; FFmpeg export; GSAP adapter | **Primary candidate for POC** |
+| **HyperFrames** | HTML-first; Chrome frame capture; deterministic seek; FFmpeg export; GSAP adapter | **Accepted technology candidate for implementation** (Phase 3 POC validated; production security & packaging deferred to Phase 4) |
 | Remotion | Programmatic video renderer, but authoring model is React components rather than plain HTML; licensing has an automation-product category | Do not choose as core unless React authoring becomes a requirement |
 | Raw Playwright/Puppeteer | Useful browser automation and screenshots; by itself it does not define the motion project's deterministic timeline contract | Use for supporting tests/tools, not the main engine |
 | Motion Canvas | Strong code-authored animation model, but not a natural direct importer for arbitrary AI-generated HTML | Not selected for initial workflow |

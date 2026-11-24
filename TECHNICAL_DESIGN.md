@@ -1,6 +1,6 @@
 # MF Motion Gen 2.0 — Technical Design
 
-**Status:** Draft 0.2 — provisional architecture pending POC  
+**Status:** Provisional / POC-validated baseline (Phase 3 complete; final application architecture awaits Phase 4 ADRs)<br>
 **Architecture approach:** HTML-first desktop studio with an isolated deterministic renderer.
 
 ## 1. Proposed system
@@ -40,15 +40,15 @@ MP4 / MOV / WebM
 
 | Layer | Candidate | Status |
 |---|---|---|
-| Desktop shell | Electron | Recommended for prototype |
-| Frontend | React + TypeScript | Recommended for prototype |
-| HTML rendering | HyperFrames + bundled/pinned Chromium | Primary engine candidate |
-| Animation timeline | GSAP paused timeline | First supported animation contract |
-| Frame capture | HyperFrames engine / Chrome BeginFrame | Primary candidate |
+| Desktop shell | Electron | Recommended for Phase 4 architecture baseline |
+| Frontend | React + TypeScript | Recommended for Phase 4 architecture baseline |
+| HTML rendering | HyperFrames + bundled/pinned Chromium | Accepted candidate for implementation |
+| Animation timeline | GSAP paused timeline | First supported animation contract (POC-validated) |
+| Frame capture | HyperFrames engine / Chrome BeginFrame | POC-validated candidate |
 | Encoding | FFmpeg | Exact build/license must be audited |
 | Project format | HTML + local assets, optional ZIP/folder | Recommended input approach |
 
-These choices are not final until the proof of concept passes.
+These choices form a provisional, POC-validated baseline. Final application architecture, IPC interfaces, and production security isolation await formal Phase 4 ADRs.
 
 ## 3. Input and project model
 

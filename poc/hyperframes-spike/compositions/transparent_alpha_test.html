@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>MF Motion Gen — Transparent ProRes 4444 Alpha Test</title>
+    <script src="../assets/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      /* Root elements must be explicitly transparent */
+      html, body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: transparent !important;
+      }
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: transparent !important;
+      }
+
+      /* Test Area 1: 100% Fully Opaque Box */
+      .opaque-box {
+        position: absolute;
+        top: 200px;
+        left: 200px;
+        width: 350px;
+        height: 250px;
+        background: #00f0ff;
+        opacity: 1.0;
+        border-radius: 16px;
+        box-shadow: 0 0 30px #00f0ff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #000;
+        font-family: sans-serif;
+        font-weight: 800;
+        font-size: 28px;
+        letter-spacing: 0.05em;
+      }
+
+      /* Test Area 2: 50% Semi-Transparent Floating HUD */
+      .semi-box {
+        position: absolute;
+        top: 200px;
+        right: 200px;
+        width: 350px;
+        height: 250px;
+        background: rgba(255, 42, 95, 0.5); /* 50% Alpha */
+        border: 4px solid rgba(255, 42, 95, 0.9);
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-family: sans-serif;
+        font-weight: 800;
+        font-size: 28px;
+        letter-spacing: 0.05em;
+      }
+
+      /* Test Area 3: Smooth Continuous Alpha Gradient Ramp */
+      .gradient-ramp {
+        position: absolute;
+        bottom: 180px;
+        left: 200px;
+        right: 200px;
+        height: 180px;
+        border-radius: 16px;
+        background: linear-gradient(to right, rgba(0, 240, 255, 0) 0%, rgba(0, 240, 255, 0.5) 50%, rgba(0, 240, 255, 1) 100%);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 40px;
+        color: #fff;
+        font-family: monospace;
+        font-size: 20px;
+        font-weight: bold;
+        text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+      }
+
+      /* Central Animated Rotating Ring with 35% Alpha */
+      .center-reticle {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 400px;
+        height: 400px;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="4"
+      data-width="1920"
+      data-height="1080"
+      data-fps="30"
+    >
+      <!-- Fully Opaque Element -->
+      <div id="opaqueBox" class="opaque-box clip" data-start="0" data-duration="4">
+        <div>100% OPAQUE</div>
+        <div style="font-size: 16px; font-weight: normal; margin-top: 8px;">ALPHA = 255</div>
+      </div>
+
+      <!-- 50% Semi-Transparent Element -->
+      <div id="semiBox" class="semi-box clip" data-start="0" data-duration="4">
+        <div>50% TRANSLUCENT</div>
+        <div style="font-size: 16px; font-weight: normal; margin-top: 8px;">ALPHA = 128</div>
+      </div>
+
+      <!-- Linear Alpha Gradient (0 -> 128 -> 255) -->
+      <div id="gradRamp" class="gradient-ramp clip" data-start="0" data-duration="4">
+        <span>ALPHA: 0 (TRANSPARENT)</span>
+        <span>ALPHA: 128 (SEMI)</span>
+        <span>ALPHA: 255 (SOLID)</span>
+      </div>
+
+      <!-- SVG Rotating Reticle -->
+      <svg id="centerReticle" class="center-reticle clip" data-start="0" data-duration="4" viewBox="0 0 400 400">
+        <circle cx="200" cy="200" r="180" fill="none" stroke="rgba(255, 179, 0, 0.4)" stroke-width="12" stroke-dasharray="20 20" />
+        <circle cx="200" cy="200" r="140" fill="rgba(0, 240, 255, 0.25)" stroke="#00f0ff" stroke-width="4" />
+      </svg>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      window.__timelines["main"] = tl;
+
+      const opaqueBox = document.getElementById("opaqueBox");
+      const semiBox = document.getElementById("semiBox");
+      const centerReticle = document.getElementById("centerReticle");
+
+      // Motion: Opaque box slides down slightly
+      tl.to(opaqueBox, { y: 60, duration: 2, yoyo: true, repeat: 1, ease: "sine.inOut" }, 0);
+
+      // Motion: Semi-transparent box pulses opacity from 0.3 to 0.8
+      tl.to(semiBox, { opacity: 0.8, duration: 1, yoyo: true, repeat: 3, ease: "sine.inOut" }, 0);
+
+      // Rotation for center reticle
+      tl.to(centerReticle, { rotation: 360, transformOrigin: "50% 50%", duration: 4, ease: "none" }, 0);
+
+      tl.seek(0);
+    </script>
+  </body>
+</html>

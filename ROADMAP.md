@@ -1,6 +1,6 @@
 # MF Motion Gen 2.0 — Roadmap
 
-**Status:** Draft 0.2. Progress is gated by evidence, not calendar dates.
+**Status:** Phase 3 closed (Accepted); Phase 4 Application Foundation in progress. Progress is gated by evidence, not calendar dates.
 
 ## Phase 0 — Project foundation
 - [x] Create clean V2 repository and local folder.
@@ -19,22 +19,23 @@
 - [x] Compare HyperFrames, Remotion, raw browser automation, and alternate desktop shell options.
 - [x] Identify deterministic-seeking and licensing risks.
 - [x] Produce a provisional stack recommendation.
-- [ ] Pin the exact HyperFrames/browser package versions after the POC.
+- [x] Pin the exact HyperFrames/browser package versions after the POC.
 - **Exit:** technology candidate accepted for a POC (not yet production approval).
 
 ## Phase 3 — Technical proof of concept
-- [ ] Define MF Motion HTML contract and Gemini authoring prompt.
-- [ ] Import standalone HTML and local asset project.
-- [ ] Test GSAP seek-by-frame, including backward/random seeking.
-- [ ] Test Canvas `renderFrame` adapter viability.
-- [ ] Compare visible preview and exported frame output.
-- [ ] Repeat render for determinism.
-- [ ] Test 1080p30, 4K30, and 4K60.
-- [ ] Test transparent MOV ProRes 4444 output.
-- [ ] Test package validation, network restrictions, cancellation, crash recovery, and limits.
-- **Exit:** visual, parity, determinism, safety, export, and performance gates pass.
+- [x] Define MF Motion HTML contract and Gemini authoring prompt.
+- [x] Import standalone HTML and local asset project.
+- [x] Test GSAP seek-by-frame, including backward/random seeking.
+- [x] Test Canvas `renderFrame` adapter viability.
+- [x] Compare visible preview and exported frame output.
+- [x] Repeat render for determinism.
+- [x] Test 1080p30, 4K30, and 4K60.
+- [x] Test transparent MOV ProRes 4444 output.
+- [x] Test package validation, network restrictions, cancellation, crash recovery, and limits.
+- **Exit:** visual, parity, determinism, safety, export, and performance gates pass (documented in `poc/hyperframes-spike/POC_FINAL_REVIEW.md` and `poc/hyperframes-spike/reports/POC_ROUND2_REPORT.md`; Phase 3 officially closed and accepted by Product Owner).
 
 ## Phase 4 — Application foundation
+**Current stage:** In preparation / transitioning from Phase 3.
 - [ ] Build Electron + React + TypeScript shell.
 - [ ] Build paste/import/batch-import UX.
 - [ ] Implement source validator and asset packaging.

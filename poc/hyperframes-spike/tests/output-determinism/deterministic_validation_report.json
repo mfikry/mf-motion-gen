@@ -1,0 +1,86 @@
+{
+  "testDate": "2026-11-23T08:11:30.256Z",
+  "verdict": "PASS",
+  "checks": {
+    "backwardSeekIdentity": true,
+    "backwardSeekPsnrDb": 93.764777,
+    "backwardSeekSsim": 1,
+    "progressMonotonic": true,
+    "countdownDecreasing": true,
+    "subSecondBoundariesSampled": true
+  },
+  "results": {
+    "t_0_00s_start": {
+      "timestampSec": 0,
+      "filePath": "F:\\PROJECT\\MF Motion Gen\\poc\\hyperframes-spike\\tests\\output-determinism\\t_0_00s_start.png",
+      "hash": "edc357c25458233878853101c6adf319c10854a6d2c0b70df0c2e2936f8d6e7b",
+      "telemetry": {
+        "countdownText": "8.00s",
+        "progressText": "0%"
+      }
+    },
+    "t_4_00s_mid": {
+      "timestampSec": 4,
+      "filePath": "F:\\PROJECT\\MF Motion Gen\\poc\\hyperframes-spike\\tests\\output-determinism\\t_4_00s_mid.png",
+      "hash": "7e221e2050470763272561f805b6b2ea7db940c02830d65d8cce85418b9723c0",
+      "telemetry": {
+        "countdownText": "4.00s",
+        "progressText": "50%"
+      }
+    },
+    "t_7_00s_pre_seal": {
+      "timestampSec": 7,
+      "filePath": "F:\\PROJECT\\MF Motion Gen\\poc\\hyperframes-spike\\tests\\output-determinism\\t_7_00s_pre_seal.png",
+      "hash": "403c519f751d98e06b57868d2bc3bdfb0a58ba84b5a877447461ce41bf678023",
+      "telemetry": {
+        "countdownText": "1.00s",
+        "progressText": "97%"
+      }
+    },
+    "t_1_00s_backward_1": {
+      "timestampSec": 1,
+      "filePath": "F:\\PROJECT\\MF Motion Gen\\poc\\hyperframes-spike\\tests\\output-determinism\\t_1_00s_backward_1.png",
+      "hash": "8a59a099a238454b6cda7f756dade433fc91061b431c00322ef958cd77b57527",
+      "telemetry": {
+        "countdownText": "7.00s",
+        "progressText": "3%"
+      }
+    },
+    "t_7_76s_stamp": {
+      "timestampSec": 7.76,
+      "filePath": "F:\\PROJECT\\MF Motion Gen\\poc\\hyperframes-spike\\tests\\output-determinism\\t_7_76s_stamp.png",
+      "hash": "69d4350f1f184c1a8b13f0cf773ccfa9617db1e285b4a3bfb451d9aa284726aa",
+      "telemetry": {
+        "countdownText": "0.24s",
+        "progressText": "100%"
+      }
+    },
+    "t_7_99s_near_end": {
+      "timestampSec": 7.99,
+      "filePath": "F:\\PROJECT\\MF Motion Gen\\poc\\hyperframes-spike\\tests\\output-determinism\\t_7_99s_near_end.png",
+      "hash": "f3aa0f669ad9e23643e1e50cfbfeb3013b703c619735ef02030b84ac05160a25",
+      "telemetry": {
+        "countdownText": "0.01s",
+        "progressText": "100%"
+      }
+    },
+    "t_1_00s_backward_2": {
+      "timestampSec": 1,
+      "filePath": "F:\\PROJECT\\MF Motion Gen\\poc\\hyperframes-spike\\tests\\output-determinism\\t_1_00s_backward_2.png",
+      "hash": "0fe1eec4ffeeb4fb7d760b441d66c7aaf2abb3c1d090a02ff23656e7ef985456",
+      "telemetry": {
+        "countdownText": "7.00s",
+        "progressText": "3%"
+      }
+    },
+    "t_8_00s_end": {
+      "timestampSec": 8,
+      "filePath": "F:\\PROJECT\\MF Motion Gen\\poc\\hyperframes-spike\\tests\\output-determinism\\t_8_00s_end.png",
+      "hash": "4c087617665d0208fafba0e94459727ac6cf50da5a44c569e2b545d4c3565246",
+      "telemetry": {
+        "countdownText": "0.00s",
+        "progressText": "100%"
+      }
+    }
+  }
+}

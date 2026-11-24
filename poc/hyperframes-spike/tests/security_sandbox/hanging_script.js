@@ -1,0 +1,1 @@
+console.log('Worker started'); while(true) {} // Infinite loop lockup

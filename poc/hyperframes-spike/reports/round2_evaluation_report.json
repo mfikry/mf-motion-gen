@@ -1,0 +1,974 @@
+{
+  "testDate": "2026-11-24T03:51:50.389Z",
+  "sampleFrameCount": 9,
+  "summary": {
+    "rendererToMezzaninePass": false,
+    "avgRendererSsim": 0.9319,
+    "avgRendererPsnrDb": 25.19,
+    "avgEncoderSsim": 0.9789,
+    "avgEncoderPsnrDb": 41.36,
+    "avgEndToEndSsim": 0.9153,
+    "avgEndToEndPsnrDb": 24.61,
+    "avgReferenceSsim": 0.583,
+    "avgReferencePsnrDb": 13.09,
+    "determinismAllBitExact": false
+  },
+  "determinismResults": [
+    {
+      "frameIndex": 0,
+      "label": "0.0000s (F0 - Initial State: Globe & Background)",
+      "fwdVsBwd": {
+        "ssim": 1,
+        "psnr": null
+      },
+      "fwdVsRnd": {
+        "ssim": 1,
+        "psnr": null
+      },
+      "bitExact": true
+    },
+    {
+      "frameIndex": 30,
+      "label": "1.0000s (F30 - Blue Panel & Red BREAKING Entrance)",
+      "fwdVsBwd": {
+        "ssim": 0.999991,
+        "psnr": 70.508775
+      },
+      "fwdVsRnd": {
+        "ssim": 1,
+        "psnr": null
+      },
+      "bitExact": true
+    },
+    {
+      "frameIndex": 60,
+      "label": "2.0000s (F60 - NEWS Text Entrance & Specular Sheen)",
+      "fwdVsBwd": {
+        "ssim": 0.999994,
+        "psnr": 71.81425
+      },
+      "fwdVsRnd": {
+        "ssim": 0.999994,
+        "psnr": 71.81425
+      },
+      "bitExact": true
+    },
+    {
+      "frameIndex": 90,
+      "label": "3.0000s (F90 - BREAKING Shift, Yellow LIVE Badge & Ticker)",
+      "fwdVsBwd": {
+        "ssim": 0.99974,
+        "psnr": 45.780165
+      },
+      "fwdVsRnd": {
+        "ssim": 0.999994,
+        "psnr": 71.491809
+      },
+      "bitExact": false
+    },
+    {
+      "frameIndex": 150,
+      "label": "5.0000s (F150 - Full Steady State & News Ticker Scroll)",
+      "fwdVsBwd": {
+        "ssim": 0.999825,
+        "psnr": 47.320191
+      },
+      "fwdVsRnd": {
+        "ssim": 0.99971,
+        "psnr": 45.547007
+      },
+      "bitExact": false
+    },
+    {
+      "frameIndex": 240,
+      "label": "8.0000s (F240 - Pre-outro Steady State)",
+      "fwdVsBwd": {
+        "ssim": 0.999724,
+        "psnr": 45.984493
+      },
+      "fwdVsRnd": {
+        "ssim": 0.999724,
+        "psnr": 45.984794
+      },
+      "bitExact": false
+    },
+    {
+      "frameIndex": 270,
+      "label": "9.0000s (F270 - Outro: LIVE Top-Right, NEWS Dark-Blue Emboss)",
+      "fwdVsBwd": {
+        "ssim": 1,
+        "psnr": null
+      },
+      "fwdVsRnd": {
+        "ssim": 0.999999,
+        "psnr": 78.218816
+      },
+      "bitExact": true
+    },
+    {
+      "frameIndex": 285,
+      "label": "9.5000s (F285 - Outro Hold & Final Framing)",
+      "fwdVsBwd": {
+        "ssim": 1,
+        "psnr": null
+      },
+      "fwdVsRnd": {
+        "ssim": 0.999999,
+        "psnr": 78.201042
+      },
+      "bitExact": true
+    },
+    {
+      "frameIndex": 299,
+      "label": "9.9667s (F299 - Last Frame of 300)",
+      "fwdVsBwd": {
+        "ssim": 1,
+        "psnr": null
+      },
+      "fwdVsRnd": {
+        "ssim": 0.999992,
+        "psnr": 71.953574
+      },
+      "bitExact": true
+    }
+  ],
+  "parityResults": [
+    {
+      "frameIndex": 0,
+      "timestampSec": 0,
+      "label": "0.0000s (F0 - Initial State: Globe & Background)",
+      "rendererToMezzanine": {
+        "ssim": 0.988088,
+        "psnrDb": 45.748419,
+        "histogram": {
+          "totalPixels": 2073600,
+          "meanDiffPerChannel": 0.704,
+          "maxChannelDiff": 53,
+          "exactZero": {
+            "count": 474641,
+            "pct": 22.89
+          },
+          "delta1to5": {
+            "count": 1582668,
+            "pct": 76.32
+          },
+          "delta6to15": {
+            "count": 13997,
+            "pct": 0.68
+          },
+          "delta16to30": {
+            "count": 2000,
+            "pct": 0.1
+          },
+          "delta31to50": {
+            "count": 291,
+            "pct": 0.01
+          },
+          "deltaGt50": {
+            "count": 3,
+            "pct": 0
+          },
+          "withinToleranceLe5": 99.21
+        }
+      },
+      "encoderImpact": {
+        "ssim": 0.981109,
+        "psnrDb": 43.495156,
+        "histogram": {
+          "totalPixels": 2073600,
+          "meanDiffPerChannel": 1.436,
+          "maxChannelDiff": 61,
+          "exactZero": {
+            "count": 23563,
+            "pct": 1.14
+          },
+          "delta1to5": {
+            "count": 2015904,
+            "pct": 97.22
+          },
+          "delta6to15": {
+            "count": 27800,
+            "pct": 1.34
+          },
+          "delta16to30": {
+            "count": 5447,
+            "pct": 0.26
+          },
+          "delta31to50": {
+            "count": 850,
+            "pct": 0.04
+          },
+          "deltaGt50": {
+            "count": 36,
+            "pct": 0
+          },
+          "withinToleranceLe5": 98.35
+        }
+      },
+      "endToEnd": {
+        "ssim": 0.97416,
+        "psnrDb": 41.241566
+      },
+      "referenceComparison": {
+        "ssim": 0.001466,
+        "psnrDb": 10.630425
+      },
+      "files": {
+        "preview": "preview_fwd_frame_000.png",
+        "prores": "frame_prores_000.png",
+        "mp4": "frame_mp4_000.png",
+        "ref": "frame_ref_000.png",
+        "diffRenderer": "diff_renderer_frame_000.png",
+        "diffEncoder": "diff_encoder_frame_000.png",
+        "diffE2e": "diff_e2e_frame_000.png"
+      }
+    },
+    {
+      "frameIndex": 30,
+      "timestampSec": 1,
+      "label": "1.0000s (F30 - Blue Panel & Red BREAKING Entrance)",
+      "rendererToMezzanine": {
+        "ssim": 0.962191,
+        "psnrDb": 25.508251,
+        "histogram": {
+          "totalPixels": 2073600,
+          "meanDiffPerChannel": 1.944,
+          "maxChannelDiff": 248,
+          "exactZero": {
+            "count": 379242,
+            "pct": 18.29
+          },
+          "delta1to5": {
+            "count": 1646330,
+            "pct": 79.39
+          },
+          "delta6to15": {
+            "count": 20144,
+            "pct": 0.97
+          },
+          "delta16to30": {
+            "count": 5751,
+            "pct": 0.28
+          },
+          "delta31to50": {
+            "count": 3902,
+            "pct": 0.19
+          },
+          "deltaGt50": {
+            "count": 18231,
+            "pct": 0.88
+          },
+          "withinToleranceLe5": 97.68
+        }
+      },
+      "encoderImpact": {
+        "ssim": 0.979801,
+        "psnrDb": 41.488807,
+        "histogram": {
+          "totalPixels": 2073600,
+          "meanDiffPerChannel": 1.462,
+          "maxChannelDiff": 108,
+          "exactZero": {
+            "count": 26581,
+            "pct": 1.28
+          },
+          "delta1to5": {
+            "count": 2013514,
+            "pct": 97.1
+          },
+          "delta6to15": {
+            "count": 25767,
+            "pct": 1.24
+          },
+          "delta16to30": {
+            "count": 4701,
+            "pct": 0.23
+          },
+          "delta31to50": {
+            "count": 1434,
+            "pct": 0.07
+          },
+          "deltaGt50": {
+            "count": 1603,
+            "pct": 0.08
+          },
+          "withinToleranceLe5": 98.38
+        }
+      },
+      "endToEnd": {
+        "ssim": 0.945726,
+        "psnrDb": 25.405401
+      },
+      "referenceComparison": {
+        "ssim": 0.676484,
+        "psnrDb": 13.7935
+      },
+      "files": {
+        "preview": "preview_fwd_frame_030.png",
+        "prores": "frame_prores_030.png",
+        "mp4": "frame_mp4_030.png",
+        "ref": "frame_ref_030.png",
+        "diffRenderer": "diff_renderer_frame_030.png",
+        "diffEncoder": "diff_encoder_frame_030.png",
+        "diffE2e": "diff_e2e_frame_030.png"
+      }
+    },
+    {
+      "frameIndex": 60,
+      "timestampSec": 2,
+      "label": "2.0000s (F60 - NEWS Text Entrance & Specular Sheen)",
+      "rendererToMezzanine": {
+        "ssim": 0.927753,
+        "psnrDb": 19.603907,
+        "histogram": {
+          "totalPixels": 2073600,
+          "meanDiffPerChannel": 5.325,
+          "maxChannelDiff": 248,
+          "exactZero": {
+            "count": 397680,
+            "pct": 19.18
+          },
+          "delta1to5": {
+            "count": 1550002,
+            "pct": 74.75
+          },
+          "delta6to15": {
+            "count": 32019,
+            "pct": 1.54
+          },
+          "delta16to30": {
+            "count": 13873,
+            "pct": 0.67
+          },
+          "delta31to50": {
+            "count": 11670,
+            "pct": 0.56
+          },
+          "deltaGt50": {
+            "count": 68356,
+            "pct": 3.3
+          },
+          "withinToleranceLe5": 93.93
+        }
+      },
+      "encoderImpact": {
+        "ssim": 0.979402,
+        "psnrDb": 41.063421,
+        "histogram": {
+          "totalPixels": 2073600,
+          "meanDiffPerChannel": 1.503,
+          "maxChannelDiff": 108,
+          "exactZero": {
+            "count": 25018,
+            "pct": 1.21
+          },
+          "delta1to5": {
+            "count": 2003228,
+            "pct": 96.61
+          },
+          "delta6to15": {
+            "count": 35494,
+            "pct": 1.71
+          },
+          "delta16to30": {
+            "count": 6160,
+            "pct": 0.3
+          },
+          "delta31to50": {
+            "count": 1770,
+            "pct": 0.09
+          },
+          "deltaGt50": {
+            "count": 1930,
+            "pct": 0.09
+          },
+          "withinToleranceLe5": 97.81
+        }
+      },
+      "endToEnd": {
+        "ssim": 0.911179,
+        "psnrDb": 19.563537
+      },
+      "referenceComparison": {
+        "ssim": 0.694086,
+        "psnrDb": 13.713301
+      },
+      "files": {
+        "preview": "preview_fwd_frame_060.png",
+        "prores": "frame_prores_060.png",
+        "mp4": "frame_mp4_060.png",
+        "ref": "frame_ref_060.png",
+        "diffRenderer": "diff_renderer_frame_060.png",
+        "diffEncoder": "diff_encoder_frame_060.png",
+        "diffE2e": "diff_e2e_frame_060.png"
+      }
+    },
+    {
+      "frameIndex": 90,
+      "timestampSec": 3,
+      "label": "3.0000s (F90 - BREAKING Shift, Yellow LIVE Badge & Ticker)",
+      "rendererToMezzanine": {
+        "ssim": 0.908234,
+        "psnrDb": 17.48684,
+        "histogram": {
+          "totalPixels": 2073600,
+          "meanDiffPerChannel": 7.231,
+          "maxChannelDiff": 252,
+          "exactZero": {
+            "count": 390325,
+            "pct": 18.82
+          },
+          "delta1to5": {
+            "count": 1538631,
+            "pct": 74.2
+          },
+          "delta6to15": {
+            "count": 33109,
+            "pct": 1.6
+          },
+          "delta16to30": {
+            "count": 14306,
+            "pct": 0.69
+          },
+          "delta31to50": {
+            "count": 10922,
+            "pct": 0.53
+          },
+          "deltaGt50": {
+            "count": 86307,
+            "pct": 4.16
+          },
+          "withinToleranceLe5": 93.02
+        }
+      },
+      "encoderImpact": {
+        "ssim": 0.978003,
+        "psnrDb": 39.334818,
+        "histogram": {
+          "totalPixels": 2073600,
+          "meanDiffPerChannel": 1.558,
+          "maxChannelDiff": 148,
+          "exactZero": {
+            "count": 67384,
+            "pct": 3.25
+          },
+          "delta1to5": {
+            "count": 1942678,
+            "pct": 93.69
+          },
+          "delta6to15": {
+            "count": 45983,
+            "pct": 2.22
+          },
+          "delta16to30": {
+            "count": 10824,
+            "pct": 0.52
+          },
+          "delta31to50": {
+            "count": 2776,
+            "pct": 0.13
+          },
+          "deltaGt50": {
+            "count": 3955,
+            "pct": 0.19
+          },
+          "withinToleranceLe5": 96.94
+        }
+      },
+      "endToEnd": {
+        "ssim": 0.891425,
+        "psnrDb": 17.451922
+      },
+      "referenceComparison": {
+        "ssim": 0.623352,
+        "psnrDb": 11.502937
+      },
+      "files": {
+        "preview": "preview_fwd_frame_090.png",
+        "prores": "frame_prores_090.png",
+        "mp4": "frame_mp4_090.png",
+        "ref": "frame_ref_090.png",
+        "diffRenderer": "diff_renderer_frame_090.png",
+        "diffEncoder": "diff_encoder_frame_090.png",
+        "diffE2e": "diff_e2e_frame_090.png"
+      }
+    },
+    {
+      "frameIndex": 150,
+      "timestampSec": 5,
+      "label": "5.0000s (F150 - Full Steady State & News Ticker Scroll)",
+      "rendererToMezzanine": {
+        "ssim": 0.907025,
+        "psnrDb": 17.549357,
+        "histogram": {
+          "totalPixels": 2073600,
+          "meanDiffPerChannel": 7.212,
+          "maxChannelDiff": 252,
+          "exactZero": {
+            "count": 391617,
+            "pct": 18.89
+          },
+          "delta1to5": {
+            "count": 1534025,
+            "pct": 73.98
+          },
+          "delta6to15": {
+            "count": 34409,
+            "pct": 1.66
+          },
+          "delta16to30": {
+            "count": 15274,
+            "pct": 0.74
+          },
+          "delta31to50": {
+            "count": 11534,
+            "pct": 0.56
+          },
+          "deltaGt50": {
+            "count": 86741,
+            "pct": 4.18
+          },
+          "withinToleranceLe5": 92.86
+        }
+      },
+      "encoderImpact": {
+        "ssim": 0.977683,
+        "psnrDb": 39.326303,
+        "histogram": {
+          "totalPixels": 2073600,
+          "meanDiffPerChannel": 1.559,
+          "maxChannelDiff": 148,
+          "exactZero": {
+            "count": 67416,
+            "pct": 3.25
+          },
+          "delta1to5": {
+            "count": 1942644,
+            "pct": 93.68
+          },
+          "delta6to15": {
+            "count": 46032,
+            "pct": 2.22
+          },
+          "delta16to30": {
+            "count": 10795,
+            "pct": 0.52
+          },
+          "delta31to50": {
+            "count": 2755,
+            "pct": 0.13
+          },
+          "deltaGt50": {
+            "count": 3958,
+            "pct": 0.19
+          },
+          "withinToleranceLe5": 96.94
+        }
+      },
+      "endToEnd": {
+        "ssim": 0.889916,
+        "psnrDb": 17.515119
+      },
+      "referenceComparison": {
+        "ssim": 0.617118,
+        "psnrDb": 11.336182
+      },
+      "files": {
+        "preview": "preview_fwd_frame_150.png",
+        "prores": "frame_prores_150.png",
+        "mp4": "frame_mp4_150.png",
+        "ref": "frame_ref_150.png",
+        "diffRenderer": "diff_renderer_frame_150.png",
+        "diffEncoder": "diff_encoder_frame_150.png",
+        "diffE2e": "diff_e2e_frame_150.png"
+      }
+    },
+    {
+      "frameIndex": 240,
+      "timestampSec": 8,
+      "label": "8.0000s (F240 - Pre-outro Steady State)",
+      "rendererToMezzanine": {
+        "ssim": 0.903668,
+        "psnrDb": 17.413957,
+        "histogram": {
+          "totalPixels": 2073600,
+          "meanDiffPerChannel": 7.387,
+          "maxChannelDiff": 252,
+          "exactZero": {
+            "count": 395826,
+            "pct": 19.09
+          },
+          "delta1to5": {
+            "count": 1527382,
+            "pct": 73.66
+          },
+          "delta6to15": {
+            "count": 34522,
+            "pct": 1.66
+          },
+          "delta16to30": {
+            "count": 15378,
+            "pct": 0.74
+          },
+          "delta31to50": {
+            "count": 11598,
+            "pct": 0.56
+          },
+          "deltaGt50": {
+            "count": 88894,
+            "pct": 4.29
+          },
+          "withinToleranceLe5": 92.75
+        }
+      },
+      "encoderImpact": {
+        "ssim": 0.977194,
+        "psnrDb": 39.290192,
+        "histogram": {
+          "totalPixels": 2073600,
+          "meanDiffPerChannel": 1.568,
+          "maxChannelDiff": 148,
+          "exactZero": {
+            "count": 65512,
+            "pct": 3.16
+          },
+          "delta1to5": {
+            "count": 1942620,
+            "pct": 93.68
+          },
+          "delta6to15": {
+            "count": 47701,
+            "pct": 2.3
+          },
+          "delta16to30": {
+            "count": 11103,
+            "pct": 0.54
+          },
+          "delta31to50": {
+            "count": 2698,
+            "pct": 0.13
+          },
+          "deltaGt50": {
+            "count": 3966,
+            "pct": 0.19
+          },
+          "withinToleranceLe5": 96.84
+        }
+      },
+      "endToEnd": {
+        "ssim": 0.886194,
+        "psnrDb": 17.381451
+      },
+      "referenceComparison": {
+        "ssim": 0.603156,
+        "psnrDb": 11.258935
+      },
+      "files": {
+        "preview": "preview_fwd_frame_240.png",
+        "prores": "frame_prores_240.png",
+        "mp4": "frame_mp4_240.png",
+        "ref": "frame_ref_240.png",
+        "diffRenderer": "diff_renderer_frame_240.png",
+        "diffEncoder": "diff_encoder_frame_240.png",
+        "diffE2e": "diff_e2e_frame_240.png"
+      }
+    },
+    {
+      "frameIndex": 270,
+      "timestampSec": 9,
+      "label": "9.0000s (F270 - Outro: LIVE Top-Right, NEWS Dark-Blue Emboss)",
+      "rendererToMezzanine": {
+        "ssim": 0.930852,
+        "psnrDb": 27.866593,
+        "histogram": {
+          "totalPixels": 2073600,
+          "meanDiffPerChannel": 2.14,
+          "maxChannelDiff": 245,
+          "exactZero": {
+            "count": 378390,
+            "pct": 18.25
+          },
+          "delta1to5": {
+            "count": 1584300,
+            "pct": 76.4
+          },
+          "delta6to15": {
+            "count": 36199,
+            "pct": 1.75
+          },
+          "delta16to30": {
+            "count": 31017,
+            "pct": 1.5
+          },
+          "delta31to50": {
+            "count": 20599,
+            "pct": 0.99
+          },
+          "deltaGt50": {
+            "count": 23095,
+            "pct": 1.11
+          },
+          "withinToleranceLe5": 94.65
+        }
+      },
+      "encoderImpact": {
+        "ssim": 0.979439,
+        "psnrDb": 42.868299,
+        "histogram": {
+          "totalPixels": 2073600,
+          "meanDiffPerChannel": 1.48,
+          "maxChannelDiff": 109,
+          "exactZero": {
+            "count": 20481,
+            "pct": 0.99
+          },
+          "delta1to5": {
+            "count": 2010751,
+            "pct": 96.97
+          },
+          "delta6to15": {
+            "count": 35519,
+            "pct": 1.71
+          },
+          "delta16to30": {
+            "count": 5711,
+            "pct": 0.28
+          },
+          "delta31to50": {
+            "count": 774,
+            "pct": 0.04
+          },
+          "deltaGt50": {
+            "count": 364,
+            "pct": 0.02
+          },
+          "withinToleranceLe5": 97.96
+        }
+      },
+      "endToEnd": {
+        "ssim": 0.914103,
+        "psnrDb": 27.717241
+      },
+      "referenceComparison": {
+        "ssim": 0.619662,
+        "psnrDb": 11.769874
+      },
+      "files": {
+        "preview": "preview_fwd_frame_270.png",
+        "prores": "frame_prores_270.png",
+        "mp4": "frame_mp4_270.png",
+        "ref": "frame_ref_270.png",
+        "diffRenderer": "diff_renderer_frame_270.png",
+        "diffEncoder": "diff_encoder_frame_270.png",
+        "diffE2e": "diff_e2e_frame_270.png"
+      }
+    },
+    {
+      "frameIndex": 285,
+      "timestampSec": 9.5,
+      "label": "9.5000s (F285 - Outro Hold & Final Framing)",
+      "rendererToMezzanine": {
+        "ssim": 0.929724,
+        "psnrDb": 27.75073,
+        "histogram": {
+          "totalPixels": 2073600,
+          "meanDiffPerChannel": 2.162,
+          "maxChannelDiff": 245,
+          "exactZero": {
+            "count": 379740,
+            "pct": 18.31
+          },
+          "delta1to5": {
+            "count": 1582939,
+            "pct": 76.34
+          },
+          "delta6to15": {
+            "count": 35531,
+            "pct": 1.71
+          },
+          "delta16to30": {
+            "count": 31125,
+            "pct": 1.5
+          },
+          "delta31to50": {
+            "count": 20593,
+            "pct": 0.99
+          },
+          "deltaGt50": {
+            "count": 23672,
+            "pct": 1.14
+          },
+          "withinToleranceLe5": 94.65
+        }
+      },
+      "encoderImpact": {
+        "ssim": 0.979256,
+        "psnrDb": 42.858269,
+        "histogram": {
+          "totalPixels": 2073600,
+          "meanDiffPerChannel": 1.482,
+          "maxChannelDiff": 109,
+          "exactZero": {
+            "count": 20420,
+            "pct": 0.98
+          },
+          "delta1to5": {
+            "count": 2009992,
+            "pct": 96.93
+          },
+          "delta6to15": {
+            "count": 36359,
+            "pct": 1.75
+          },
+          "delta16to30": {
+            "count": 5711,
+            "pct": 0.28
+          },
+          "delta31to50": {
+            "count": 752,
+            "pct": 0.04
+          },
+          "deltaGt50": {
+            "count": 366,
+            "pct": 0.02
+          },
+          "withinToleranceLe5": 97.92
+        }
+      },
+      "endToEnd": {
+        "ssim": 0.912892,
+        "psnrDb": 27.606048
+      },
+      "referenceComparison": {
+        "ssim": 0.697716,
+        "psnrDb": 16.604485
+      },
+      "files": {
+        "preview": "preview_fwd_frame_285.png",
+        "prores": "frame_prores_285.png",
+        "mp4": "frame_mp4_285.png",
+        "ref": "frame_ref_285.png",
+        "diffRenderer": "diff_renderer_frame_285.png",
+        "diffEncoder": "diff_encoder_frame_285.png",
+        "diffE2e": "diff_e2e_frame_285.png"
+      }
+    },
+    {
+      "frameIndex": 299,
+      "timestampSec": 9.966667,
+      "label": "9.9667s (F299 - Last Frame of 300)",
+      "rendererToMezzanine": {
+        "ssim": 0.929675,
+        "psnrDb": 27.739451,
+        "histogram": {
+          "totalPixels": 2073600,
+          "meanDiffPerChannel": 2.159,
+          "maxChannelDiff": 245,
+          "exactZero": {
+            "count": 380279,
+            "pct": 18.34
+          },
+          "delta1to5": {
+            "count": 1582926,
+            "pct": 76.34
+          },
+          "delta6to15": {
+            "count": 35430,
+            "pct": 1.71
+          },
+          "delta16to30": {
+            "count": 30791,
+            "pct": 1.48
+          },
+          "delta31to50": {
+            "count": 20548,
+            "pct": 0.99
+          },
+          "deltaGt50": {
+            "count": 23626,
+            "pct": 1.14
+          },
+          "withinToleranceLe5": 94.68
+        }
+      },
+      "encoderImpact": {
+        "ssim": 0.978051,
+        "psnrDb": 42.487578,
+        "histogram": {
+          "totalPixels": 2073600,
+          "meanDiffPerChannel": 1.521,
+          "maxChannelDiff": 109,
+          "exactZero": {
+            "count": 20353,
+            "pct": 0.98
+          },
+          "delta1to5": {
+            "count": 1999413,
+            "pct": 96.42
+          },
+          "delta6to15": {
+            "count": 45215,
+            "pct": 2.18
+          },
+          "delta16to30": {
+            "count": 7550,
+            "pct": 0.36
+          },
+          "delta31to50": {
+            "count": 704,
+            "pct": 0.03
+          },
+          "deltaGt50": {
+            "count": 365,
+            "pct": 0.02
+          },
+          "withinToleranceLe5": 97.4
+        }
+      },
+      "endToEnd": {
+        "ssim": 0.912153,
+        "psnrDb": 27.59496
+      },
+      "referenceComparison": {
+        "ssim": 0.714119,
+        "psnrDb": 17.16298
+      },
+      "files": {
+        "preview": "preview_fwd_frame_299.png",
+        "prores": "frame_prores_299.png",
+        "mp4": "frame_mp4_299.png",
+        "ref": "frame_ref_299.png",
+        "diffRenderer": "diff_renderer_frame_299.png",
+        "diffEncoder": "diff_encoder_frame_299.png",
+        "diffE2e": "diff_e2e_frame_299.png"
+      }
+    }
+  ],
+  "animationChecks": {
+    "globe": {
+      "frontChildrenCount": 814,
+      "backChildrenCount": 814,
+      "totalDotsRendered": 1628
+    },
+    "orbit": {
+      "frontPathD": "M1417.8,339.7 L1419.6,345.9 L1...",
+      "backPathD": "M502.2,700.3 L500.4,694.1 L499...",
+      "orbFrontExists": true,
+      "orbBackExists": true
+    },
+    "headline": {
+      "bluePanelPresent": true,
+      "breakingPanelPresent": true,
+      "newsWrapPresent": true,
+      "liveBadgePresent": true,
+      "sheenPresent": true
+    },
+    "ticker": {
+      "trackExists": true,
+      "segmentsCount": 2
+    },
+    "sparkles": {
+      "sparklesCount": 48
+    }
+  }
+}

@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>NEXUS — Advanced Data Transmission System</title>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/gsap.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 1920px;
+      height: 1080px;
+      background-color: #020510;
+      overflow: hidden;
+      font-family: 'Bahnschrift', 'Segoe UI', Arial, sans-serif;
+      color: #e6f6ff;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    #root {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 960px 515px, #0b1e46 0%, #050f26 42%, #020613 78%, #01030a 100%);
+    }
+
+    #scene-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1920px;
+      height: 1080px;
+      display: block;
+    }
+
+    .hud-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1920px;
+      height: 1080px;
+      pointer-events: none;
+    }
+
+    .mono {
+      font-family: 'Cascadia Mono', 'Consolas', 'Lucida Console', monospace;
+    }
+
+    /* Top Left Header */
+    #title-block {
+      position: absolute;
+      top: 76px;
+      left: 88px;
+      opacity: 0;
+    }
+
+    .eyebrow-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .eyebrow-dot {
+      width: 8px;
+      height: 8px;
+      background: #00f0ff;
+      box-shadow: 0 0 12px #00f0ff;
+      transform: rotate(45deg);
+    }
+
+    .eyebrow-text {
+      font-size: 13px;
+      letter-spacing: 3.4px;
+      color: #66b8ff;
+      text-transform: uppercase;
+    }
+
+    .main-title {
+      font-size: 62px;
+      font-weight: 700;
+      line-height: 0.96;
+      letter-spacing: 14px;
+      color: #f0f9ff;
+      text-shadow: 0 0 28px rgba(0, 240, 255, 0.35);
+      margin-bottom: 10px;
+    }
+
+    .sub-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .sub-title-bar {
+      width: 28px;
+      height: 2px;
+      background: linear-gradient(90deg, #00f0ff, #2979ff);
+    }
+
+    .sub-title {
+      font-size: 15px;
+      letter-spacing: 4.5px;
+      color: #7dd3fc;
+      text-transform: uppercase;
+    }
+
+    /* Top Right Telemetry */
+    #top-right-telemetry {
+      position: absolute;
+      top: 76px;
+      right: 88px;
+      width: 390px;
+      text-align: right;
+      opacity: 0;
+    }
+
+    .telemetry-header-row {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+
+    .status-pill {
+      position: relative;
+      width: 176px;
+      height: 28px;
+      border: 1px solid rgba(0, 240, 255, 0.38);
+      background: rgba(5, 22, 52, 0.72);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .status-text {
+      position: absolute;
+      font-size: 12px;
+      letter-spacing: 2.4px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    #status-init { color: #60a5fa; opacity: 1; }
+    #status-est { color: #00f0ff; opacity: 0; }
+    #status-glitch { color: #ffb300; opacity: 0; }
+    #status-tx { color: #38bdf8; opacity: 0; }
+    #status-sync { color: #a5f3fc; opacity: 0; text-shadow: 0 0 12px rgba(0, 240, 255, 0.8); }
+
+    .signal-meter {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      height: 22px;
+      padding: 2px 6px;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+    }
+
+    .sig-bar {
+      width: 5px;
+      background: #00f0ff;
+      opacity: 0.14;
+      box-shadow: 0 0 8px rgba(0, 240, 255, 0.45);
+    }
+
+    .meta-grid {
+      display: flex;
+      justify-content: flex-end;
+      gap: 26px;
+      margin-top: 8px;
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 3px;
+    }
+
+    .meta-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: #4b79a8;
+    }
+
+    .meta-val {
+      font-size: 13px;
+      letter-spacing: 1.6px;
+      color: #bae6fd;
+    }
+
+    /* Bottom Left Channel Telemetry */
+    #bottom-left-telemetry {
+      position: absolute;
+      bottom: 74px;
+      left: 88px;
+      width: 420px;
+      opacity: 0;
+    }
+
+    .panel-kicker {
+      font-size: 11px;
+      letter-spacing: 2.8px;
+      color: #5b9bd5;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .panel-kicker::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(0, 240, 255, 0.35), rgba(0, 240, 255, 0));
+    }
+
+    .channel-strip {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .ch-cell {
+      flex: 1;
+      height: 24px;
+      border: 1px solid rgba(41, 121, 255, 0.32);
+      background: rgba(4, 15, 38, 0.78);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: #4f79a3;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ch-fill {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      height: 3px;
+      background: #00f0ff;
+      opacity: 0;
+      box-shadow: 0 0 8px #00f0ff;
+    }
+
+    .metrics-row {
+      display: flex;
+      gap: 36px;
+    }
+
+    .metric-block {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .metric-title {
+      font-size: 10px;
+      letter-spacing: 2.2px;
+      color: #5282b5;
+    }
+
+    .metric-number {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: #e0f7ff;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .metric-unit {
+      font-size: 12px;
+      color: #00f0ff;
+      margin-left: 5px;
+    }
+
+    /* Bottom Right Matrix Telemetry */
+    #bottom-right-telemetry {
+      position: absolute;
+      bottom: 74px;
+      right: 88px;
+      width: 420px;
+      text-align: right;
+      opacity: 0;
+    }
+
+    .panel-kicker-right {
+      font-size: 11px;
+      letter-spacing: 2.8px;
+      color: #5b9bd5;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .panel-kicker-right::before {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(270deg, rgba(0, 240, 255, 0.35), rgba(0, 240, 255, 0));
+    }
+
+    .metrics-row-right {
+      display: flex;
+      justify-content: flex-end;
+      gap: 36px;
+      margin-bottom: 10px;
+    }
+
+    .matrix-subrow {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 14px;
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: #7dd3fc;
+    }
+
+    .amber-tag {
+      color: #ffb300;
+      border: 1px solid rgba(255, 179, 0, 0.4);
+      padding: 2px 8px;
+      font-size: 10px;
+      letter-spacing: 1.8px;
+    }
+
+    /* Bottom Center Synchronization Module */
+    #sync-module {
+      position: absolute;
+      left: 610px;
+      bottom: 68px;
+      width: 700px;
+      height: 112px;
+      opacity: 0;
+    }
+
+    .sync-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 10px;
+    }
+
+    .sync-label-stack {
+      position: relative;
+      height: 24px;
+      width: 430px;
+    }
+
+    .sync-phase-label {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      font-size: 14px;
+      letter-spacing: 4px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    #sync-label-progress {
+      color: #7dd3fc;
+      opacity: 1;
+    }
+
+    #sync-label-complete {
+      color: #00f0ff;
+      text-shadow: 0 0 18px rgba(0, 240, 255, 0.85);
+      letter-spacing: 4.8px;
+      opacity: 0;
+    }
+
+    .sync-pct-wrap {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+
+    #sync-pct-num {
+      font-size: 40px;
+      font-weight: 700;
+      line-height: 1;
+      color: #f0faff;
+      text-shadow: 0 0 20px rgba(0, 240, 255, 0.45);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sync-pct-sym {
+      font-size: 18px;
+      color: #00f0ff;
+      font-weight: 700;
+    }
+
+    .sync-bar-shell {
+      position: relative;
+      width: 100%;
+      height: 16px;
+      border: 1px solid rgba(0, 240, 255, 0.42);
+      background: rgba(3, 14, 34, 0.88);
+      padding: 3px;
+    }
+
+    .sync-bar-track {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: rgba(15, 40, 82, 0.45);
+      overflow: hidden;
+    }
+
+    #sync-bar-fill {
+      width: 100%;
+      height: 100%;
+      transform-origin: left center;
+      transform: scaleX(0);
+      background: linear-gradient(90deg, #1d4ed8 0%, #00b4ff 55%, #00f0ff 90%, #d9fbff 100%);
+      box-shadow: 0 0 18px rgba(0, 240, 255, 0.75);
+    }
+
+    .sync-scale-ticks {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+      font-size: 10px;
+      letter-spacing: 1.4px;
+      color: #46729e;
+    }
+
+    /* Core Center Numeric Readout */
+    #core-center-readout {
+      position: absolute;
+      left: 960px;
+      top: 515px;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    .core-mini-tag {
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: #7dd3fc;
+      margin-top: 64px;
+    }
+
+    /* Controlled Glitch Bars */
+    .glitch-bar {
+      position: absolute;
+      height: 2px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #glitch-bar-1 {
+      left: 340px;
+      top: 412px;
+      width: 1240px;
+      background: linear-gradient(90deg, transparent 0%, #00f0ff 35%, #ffb300 68%, transparent 100%);
+    }
+
+    #glitch-bar-2 {
+      left: 560px;
+      top: 618px;
+      width: 800px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent 0%, #ffb300 45%, #00f0ff 80%, transparent 100%);
+    }
+
+    /* Node Labels */
+    .node-hud-label {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .node-code {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #e0f7ff;
+    }
+
+    .node-role {
+      font-size: 10px;
+      letter-spacing: 1.8px;
+      color: #38bdf8;
+    }
+  </style>
+</head>
+<body>
+  <div
+    id="root"
+    data-composition-id="main"
+    data-start="0"
+    data-duration="8"
+    data-width="1920"
+    data-height="1080"
+    data-fps="30"
+  >
+    <svg id="scene-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="core-aura-grad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.38" />
+          <stop offset="32%" stop-color="#2979ff" stop-opacity="0.18" />
+          <stop offset="68%" stop-color="#0b2866" stop-opacity="0.06" />
+          <stop offset="100%" stop-color="#020612" stop-opacity="0" />
+        </radialGradient>
+
+        <radialGradient id="nucleus-grad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="1" />
+          <stop offset="38%" stop-color="#7ef9ff" stop-opacity="0.95" />
+          <stop offset="72%" stop-color="#00b4ff" stop-opacity="0.65" />
+          <stop offset="100%" stop-color="#2979ff" stop-opacity="0" />
+        </radialGradient>
+
+        <linearGradient id="cyan-blue-stroke" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#00f0ff" />
+          <stop offset="50%" stop-color="#38bdf8" />
+          <stop offset="100%" stop-color="#2979ff" />
+        </linearGradient>
+
+        <linearGradient id="sync-ring-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#2979ff" />
+          <stop offset="55%" stop-color="#00f0ff" />
+          <stop offset="100%" stop-color="#e0fbff" />
+        </linearGradient>
+
+        <filter id="glow-soft" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="6" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+
+        <filter id="glow-strong" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="12" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+
+        <pattern id="tech-grid" width="60" height="60" patternUnits="userSpaceOnUse">
+          <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#1e498a" stroke-width="0.6" stroke-opacity="0.28" />
+          <circle cx="0" cy="0" r="1" fill="#38bdf8" fill-opacity="0.35" />
+        </pattern>
+      </defs>
+
+      <!-- Architectural Coordinate Grid -->
+      <rect id="bg-grid" class="clip" data-start="0" data-duration="1.2" x="48" y="48" width="1824" height="984" fill="url(#tech-grid)" opacity="0" />
+
+      <!-- Ambient Core Aura -->
+      <circle id="core-aura" class="clip" data-start="0" data-duration="8" cx="960" cy="515" r="440" fill="url(#core-aura-grad)" opacity="0" />
+
+      <!-- Perimeter Architectural Frame -->
+      <g id="perimeter-frame" class="clip" data-start="0.05" data-duration="0.9">
+        <rect id="outer-border" class="clip" data-start="0.05" data-duration="0.85" x="48" y="48" width="1824" height="984" fill="none" stroke="#1e4d8c" stroke-width="1" opacity="0.7" />
+        <!-- Corner L-Brackets -->
+        <path id="corner-tl" class="clip" data-start="0.1" data-duration="0.6" d="M 48 112 L 48 48 L 112 48" fill="none" stroke="#00f0ff" stroke-width="2.5" />
+        <path id="corner-tr" class="clip" data-start="0.1" data-duration="0.6" d="M 1808 48 L 1872 48 L 1872 112" fill="none" stroke="#00f0ff" stroke-width="2.5" />
+        <path id="corner-bl" class="clip" data-start="0.1" data-duration="0.6" d="M 48 968 L 48 1032 L 112 1032" fill="none" stroke="#00f0ff" stroke-width="2.5" />
+        <path id="corner-br" class="clip" data-start="0.1" data-duration="0.6" d="M 1808 1032 L 1872 1032 L 1872 968" fill="none" stroke="#00f0ff" stroke-width="2.5" />
+
+        <!-- Horizontal Center Axis Guidelines -->
+        <line id="axis-left" class="clip" data-start="0.2" data-duration="0.7" x1="68" y1="515" x2="625" y2="515" stroke="#1c4782" stroke-width="0.9" stroke-dasharray="4 6" opacity="0" />
+        <line id="axis-right" class="clip" data-start="0.2" data-duration="0.7" x1="1295" y1="515" x2="1852" y2="515" stroke="#1c4782" stroke-width="0.9" stroke-dasharray="4 6" opacity="0" />
+        <line id="axis-top" class="clip" data-start="0.2" data-duration="0.7" x1="960" y1="64" x2="960" y2="185" stroke="#1c4782" stroke-width="0.9" stroke-dasharray="4 6" opacity="0" />
+        <line id="axis-bottom" class="clip" data-start="0.2" data-duration="0.7" x1="960" y1="840" x2="960" y2="890" stroke="#1c4782" stroke-width="0.9" stroke-dasharray="4 6" opacity="0" />
+      </g>
+
+      <!-- Data Transmission Conduits & Mesh Links (populated deterministically in JS) -->
+      <g id="network-conduits"></g>
+      <g id="network-pulses"></g>
+      <g id="network-packets"></g>
+
+      <!-- Central Network Core -->
+      <g id="central-core" class="clip" data-start="0.15" data-duration="7.85" transform="translate(960, 515)">
+        <!-- Layer 1: Outermost Calibration Halo & Ticks -->
+        <g id="core-ring-outer" class="clip" data-start="0.25" data-duration="7.75" opacity="0">
+          <circle cx="0" cy="0" r="326" fill="none" stroke="#1b437a" stroke-width="1" stroke-dasharray="2 8" />
+          <circle cx="0" cy="0" r="308" fill="none" stroke="#2979ff" stroke-width="1.2" stroke-opacity="0.45" />
+          <g id="core-ticks"></g>
+        </g>
+
+        <!-- Layer 2: Segmented Orbital Tech Ring -->
+        <g id="core-ring-tech" class="clip" data-start="0.35" data-duration="7.65" opacity="0">
+          <circle cx="0" cy="0" r="264" fill="none" stroke="#0e2c5c" stroke-width="12" stroke-opacity="0.42" />
+          <path d="M -264 0 A 264 264 0 0 1 -186.6 -186.6" fill="none" stroke="#00f0ff" stroke-width="2.5" filter="url(#glow-soft)" />
+          <path d="M 0 -264 A 264 264 0 0 1 228.6 -132" fill="none" stroke="#38bdf8" stroke-width="2" />
+          <path d="M 264 0 A 264 264 0 0 1 132 228.6" fill="none" stroke="#00f0ff" stroke-width="2.5" filter="url(#glow-soft)" />
+          <path d="M 0 264 A 264 264 0 0 1 -228.6 132" fill="none" stroke="#2979ff" stroke-width="2" />
+          <circle cx="264" cy="0" r="4" fill="#00f0ff" />
+          <circle cx="-264" cy="0" r="4" fill="#00f0ff" />
+          <circle cx="0" cy="-264" r="3.5" fill="#ffb300" />
+          <circle cx="0" cy="264" r="3.5" fill="#ffb300" />
+        </g>
+
+        <!-- Layer 3: Counter-Rotating Precision Dashed Ring -->
+        <g id="core-ring-dashed" class="clip" data-start="0.45" data-duration="7.55" opacity="0">
+          <circle cx="0" cy="0" r="222" fill="none" stroke="#38bdf8" stroke-width="1.2" stroke-dasharray="14 10 3 10" stroke-opacity="0.7" />
+          <circle cx="0" cy="0" r="206" fill="none" stroke="#1a3f75" stroke-width="1" />
+          <rect x="-4" y="-226" width="8" height="8" fill="#ffb300" opacity="0.9" />
+          <rect x="-4" y="218" width="8" height="8" fill="#ffb300" opacity="0.9" />
+        </g>
+
+        <!-- Layer 4: Radial Sync Progress Ring (r=174, circumference = 1093.27) -->
+        <g id="core-sync-ring-group" class="clip" data-start="0.4" data-duration="6.6">
+          <circle cx="0" cy="0" r="174" fill="none" stroke="#0d254d" stroke-width="7" />
+          <circle
+            id="core-sync-arc"
+            class="clip"
+            data-start="2.4"
+            data-duration="3.85"
+            cx="0" cy="0" r="174"
+            fill="none"
+            stroke="url(#sync-ring-grad)"
+            stroke-width="7"
+            stroke-linecap="round"
+            transform="rotate(-90)"
+            stroke-dasharray="1093.27"
+            stroke-dashoffset="1093.27"
+            filter="url(#glow-soft)"
+          />
+        </g>
+
+        <!-- Layer 5: Inner Octagonal Lattice & Reticle -->
+        <g id="core-inner-lattice" class="clip" data-start="0.25" data-duration="7.75" opacity="0">
+          <circle cx="0" cy="0" r="126" fill="none" stroke="#2979ff" stroke-width="1.4" stroke-opacity="0.65" />
+          <polygon
+            points="0,-116 82,-82 116,0 82,82 0,116 -82,82 -116,0 -82,-82"
+            fill="rgba(7, 24, 58, 0.45)"
+            stroke="#00f0ff"
+            stroke-width="1.2"
+            stroke-opacity="0.7"
+          />
+          <circle cx="0" cy="0" r="78" fill="none" stroke="#38bdf8" stroke-width="1" stroke-dasharray="6 6" />
+          <!-- Reticle Crosshairs -->
+          <line x1="-152" y1="0" x2="-88" y2="0" stroke="#00f0ff" stroke-width="1.5" />
+          <line x1="88" y1="0" x2="152" y2="0" stroke="#00f0ff" stroke-width="1.5" />
+          <line x1="0" y1="-152" x2="0" y2="-88" stroke="#00f0ff" stroke-width="1.5" />
+          <line x1="0" y1="88" x2="0" y2="152" stroke="#00f0ff" stroke-width="1.5" />
+        </g>
+
+        <!-- Layer 6: Nucleus & Pulse Waves -->
+        <circle id="core-pulse-1" class="clip" data-start="3.45" data-duration="0.9" cx="0" cy="0" r="46" fill="none" stroke="#00f0ff" stroke-width="2.5" opacity="0" />
+        <circle id="core-pulse-2" class="clip" data-start="4.05" data-duration="0.9" cx="0" cy="0" r="46" fill="none" stroke="#38bdf8" stroke-width="2" opacity="0" />
+        <circle id="core-pulse-3" class="clip" data-start="4.65" data-duration="0.9" cx="0" cy="0" r="46" fill="none" stroke="#00f0ff" stroke-width="2.5" opacity="0" />
+        <circle id="core-sync-flash" class="clip" data-start="6.2" data-duration="1.1" cx="0" cy="0" r="174" fill="none" stroke="#a5f3fc" stroke-width="3.5" opacity="0" filter="url(#glow-strong)" />
+
+        <g id="core-nucleus" class="clip" data-start="0.15" data-duration="7.85" opacity="0">
+          <circle cx="0" cy="0" r="56" fill="url(#nucleus-grad)" filter="url(#glow-strong)" opacity="0.7" />
+          <circle cx="0" cy="0" r="32" fill="#071a3f" stroke="#00f0ff" stroke-width="2" />
+          <circle cx="0" cy="0" r="18" fill="#00f0ff" filter="url(#glow-soft)" />
+          <circle cx="0" cy="0" r="7" fill="#ffffff" />
+        </g>
+
+        <!-- Controlled Chromatic Glitch Overlay Rings -->
+        <g id="core-glitch-cyan" class="clip" data-start="4.14" data-duration="0.54" opacity="0">
+          <circle cx="0" cy="0" r="174" fill="none" stroke="#00f0ff" stroke-width="2" stroke-dasharray="48 28" />
+          <circle cx="0" cy="0" r="126" fill="none" stroke="#00f0ff" stroke-width="1.5" />
+        </g>
+        <g id="core-glitch-amber" class="clip" data-start="4.14" data-duration="0.54" opacity="0">
+          <circle cx="0" cy="0" r="222" fill="none" stroke="#ffb300" stroke-width="1.5" stroke-dasharray="32 42" />
+          <line x1="-190" y1="-12" x2="190" y2="-12" stroke="#ffb300" stroke-width="1" />
+        </g>
+      </g>
+
+      <!-- Peripheral Data Nodes (populated deterministically in JS) -->
+      <g id="peripheral-nodes"></g>
+    </svg>
+
+    <!-- Crisp Vector HUD Typography Layer -->
+    <div class="hud-layer">
+      <!-- Top Left Header -->
+      <div id="title-block" class="clip" data-start="0.25" data-duration="0.75">
+        <div class="eyebrow-row">
+          <div class="eyebrow-dot"></div>
+          <div class="eyebrow-text mono">SYS // CORE-09 · PROTOCOL Q-SYNC 4.2</div>
+        </div>
+        <div class="main-title">NEXUS</div>
+        <div class="sub-title-wrap">
+          <div class="sub-title-bar"></div>
+          <div class="sub-title mono">ADVANCED DATA TRANSMISSION SYSTEM</div>
+        </div>
+      </div>
+
+      <!-- Top Right Telemetry -->
+      <div id="top-right-telemetry" class="clip" data-start="0.35" data-duration="7.65">
+        <div class="telemetry-header-row">
+          <div class="signal-meter">
+            <div class="sig-bar clip" data-start="1.1" data-duration="6.9" style="height: 5px;" id="sig-1"></div>
+            <div class="sig-bar clip" data-start="1.3" data-duration="6.7" style="height: 7px;" id="sig-2"></div>
+            <div class="sig-bar clip" data-start="1.5" data-duration="6.5" style="height: 9px;" id="sig-3"></div>
+            <div class="sig-bar clip" data-start="1.7" data-duration="6.3" style="height: 11px;" id="sig-4"></div>
+            <div class="sig-bar clip" data-start="2.0" data-duration="6.0" style="height: 13px;" id="sig-5"></div>
+            <div class="sig-bar clip" data-start="2.4" data-duration="5.6" style="height: 15px;" id="sig-6"></div>
+            <div class="sig-bar clip" data-start="4.8" data-duration="3.2" style="height: 17px;" id="sig-7"></div>
+            <div class="sig-bar clip" data-start="5.4" data-duration="2.6" style="height: 20px;" id="sig-8"></div>
+          </div>
+          <div class="status-pill">
+            <span id="status-init" class="status-text mono clip" data-start="0.35" data-duration="0.7">INITIALIZING</span>
+            <span id="status-est" class="status-text mono clip" data-start="1.0" data-duration="2.5">ESTABLISHING</span>
+            <span id="status-tx" class="status-text mono clip" data-start="3.4" data-duration="2.9">HIGH-SPEED TX</span>
+            <span id="status-glitch" class="status-text mono clip" data-start="4.12" data-duration="0.56">INTERFERENCE</span>
+            <span id="status-sync" class="status-text mono clip" data-start="6.2" data-duration="1.8">SYNCHRONIZED</span>
+          </div>
+        </div>
+        <div class="meta-grid mono">
+          <div class="meta-item">
+            <span class="meta-label">TOPOLOGY</span>
+            <span class="meta-val">OCTA-MESH 8X</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">CARRIER</span>
+            <span class="meta-val">Q-OPTIC 48.6T</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">ENCRYPTION</span>
+            <span class="meta-val">AES-512-Q</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Left Telemetry -->
+      <div id="bottom-left-telemetry" class="clip" data-start="0.4" data-duration="7.6">
+        <div class="panel-kicker mono">CHANNEL TELEMETRY // ACTIVE LINKS</div>
+        <div class="channel-strip mono">
+          <div class="ch-cell" id="ch-1">CH-01<div class="ch-fill clip" data-start="1.2" data-duration="6.8" id="ch-fill-1"></div></div>
+          <div class="ch-cell" id="ch-2">CH-02<div class="ch-fill clip" data-start="1.35" data-duration="6.65" id="ch-fill-2"></div></div>
+          <div class="ch-cell" id="ch-3">CH-03<div class="ch-fill clip" data-start="1.5" data-duration="6.5" id="ch-fill-3"></div></div>
+          <div class="ch-cell" id="ch-4">CH-04<div class="ch-fill clip" data-start="1.65" data-duration="6.35" id="ch-fill-4"></div></div>
+          <div class="ch-cell" id="ch-5">CH-05<div class="ch-fill clip" data-start="1.8" data-duration="6.2" id="ch-fill-5"></div></div>
+          <div class="ch-cell" id="ch-6">CH-06<div class="ch-fill clip" data-start="1.95" data-duration="6.05" id="ch-fill-6"></div></div>
+          <div class="ch-cell" id="ch-7">CH-07<div class="ch-fill clip" data-start="2.1" data-duration="5.9" id="ch-fill-7"></div></div>
+          <div class="ch-cell" id="ch-8">CH-08<div class="ch-fill clip" data-start="2.25" data-duration="5.75" id="ch-fill-8"></div></div>
+        </div>
+        <div class="metrics-row">
+          <div class="metric-block">
+            <span class="metric-title mono">THROUGHPUT</span>
+            <div class="metric-number mono"><span id="val-throughput">00.00</span><span class="metric-unit">TB/S</span></div>
+          </div>
+          <div class="metric-block">
+            <span class="metric-title mono">LATENCY</span>
+            <div class="metric-number mono"><span id="val-latency">28.0</span><span class="metric-unit">MS</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Right Telemetry -->
+      <div id="bottom-right-telemetry" class="clip" data-start="0.4" data-duration="7.6">
+        <div class="panel-kicker-right mono">TRANSMISSION MATRIX // INTEGRITY</div>
+        <div class="metrics-row-right">
+          <div class="metric-block">
+            <span class="metric-title mono">VERIFIED PACKETS</span>
+            <div class="metric-number mono"><span id="val-packets">00,000</span><span class="metric-unit">PKT</span></div>
+          </div>
+          <div class="metric-block">
+            <span class="metric-title mono">ACTIVE NODES</span>
+            <div class="metric-number mono"><span id="val-nodes">0</span><span class="metric-unit">/ 8</span></div>
+          </div>
+        </div>
+        <div class="matrix-subrow mono">
+          <span>CHECKSUM: Q-ECC ACTIVE</span>
+          <span class="amber-tag">PHASE LOCK 09</span>
+        </div>
+      </div>
+
+      <!-- Bottom Center Synchronization Indicator -->
+      <div id="sync-module" class="clip" data-start="0.4" data-duration="7.6">
+        <div class="sync-header">
+          <div class="sync-label-stack">
+            <span id="sync-label-progress" class="sync-phase-label mono clip" data-start="0.4" data-duration="5.9">NETWORK SYNCHRONIZATION</span>
+            <span id="sync-label-complete" class="sync-phase-label mono clip" data-start="6.15" data-duration="1.85">SYNCHRONIZATION COMPLETE</span>
+          </div>
+          <div class="sync-pct-wrap mono">
+            <span id="sync-pct-num">0</span>
+            <span class="sync-pct-sym">%</span>
+          </div>
+        </div>
+        <div class="sync-bar-shell">
+          <div class="sync-bar-track">
+            <div id="sync-bar-fill" class="clip" data-start="2.4" data-duration="3.85"></div>
+          </div>
+        </div>
+        <div class="sync-scale-ticks mono">
+          <span>00%</span>
+          <span>25%</span>
+          <span>50%</span>
+          <span>75%</span>
+          <span>100%</span>
+        </div>
+      </div>
+
+      <!-- Core Mini Tag -->
+      <div id="core-center-readout" class="clip" data-start="0.5" data-duration="7.5">
+        <div class="core-mini-tag mono">CORE-09</div>
+      </div>
+
+      <!-- Peripheral Node Labels Container -->
+      <div id="node-labels-layer"></div>
+
+      <!-- Controlled Glitch Slice Overlays -->
+      <div id="glitch-bar-1" class="glitch-bar clip" data-start="4.14" data-duration="0.48"></div>
+      <div id="glitch-bar-2" class="glitch-bar clip" data-start="4.18" data-duration="0.42"></div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const SVG_NS = "http://www.w3.org/2000/svg";
+
+      function createSvgEl(tag, attrs) {
+        const el = document.createElementNS(SVG_NS, tag);
+        for (const [k, v] of Object.entries(attrs)) {
+          el.setAttribute(k, String(v));
+        }
+        return el;
+      }
+
+      // 1. Build 72 deterministic radial tick marks on Core Outer Ring
+      const ticksGroup = document.getElementById("core-ticks");
+      for (let i = 0; i < 72; i++) {
+        const angle = (i * 5) * (Math.PI / 180);
+        const isMajor = i % 6 === 0;
+        const rInner = isMajor ? 292 : 300;
+        const rOuter = 308;
+        const x1 = (Math.cos(angle) * rInner).toFixed(2);
+        const y1 = (Math.sin(angle) * rInner).toFixed(2);
+        const x2 = (Math.cos(angle) * rOuter).toFixed(2);
+        const y2 = (Math.sin(angle) * rOuter).toFixed(2);
+        ticksGroup.appendChild(createSvgEl("line", {
+          x1, y1, x2, y2,
+          stroke: isMajor ? "#00f0ff" : "#38bdf8",
+          "stroke-width": isMajor ? "1.8" : "0.9",
+          "stroke-opacity": isMajor ? "0.85" : "0.4"
+        }));
+      }
+
+      // 2. Define Nodes & Geometric Conduits (chamfered 45-deg precision circuits)
+      const nodesData = [
+        { id: "N-01", role: "INGRESS-A", x: 230, y: 295, lx: 150, ly: 236, align: "left", start: 1.05 },
+        { id: "N-02", role: "RELAY-01",  x: 435, y: 385, lx: 382, ly: 326, align: "left", start: 1.18 },
+        { id: "N-03", role: "BUFFER-L",  x: 200, y: 515, lx: 112, ly: 545, align: "left", start: 1.30 },
+        { id: "N-04", role: "MUX-L",     x: 415, y: 695, lx: 368, ly: 726, align: "left", start: 1.42 },
+        { id: "N-05", role: "EGRESS-B",  x: 1690, y: 295, lx: 1660, ly: 236, align: "right", start: 1.05 },
+        { id: "N-06", role: "RELAY-02",  x: 1485, y: 385, lx: 1445, ly: 326, align: "right", start: 1.18 },
+        { id: "N-07", role: "VERIFY-R",  x: 1720, y: 515, lx: 1695, ly: 545, align: "right", start: 1.30 },
+        { id: "N-08", role: "MUX-R",     x: 1505, y: 695, lx: 1465, ly: 726, align: "right", start: 1.42 }
+      ];
+
+      // Each conduit has explicit waypoints for exact deterministic SVG drawing & packet motion
+      const conduitsData = [
+        // Left wing to Core
+        { id: "c1", pts: [[230, 295], [495, 295], [648, 382]], start: 1.25, dur: 0.75, color: "#00f0ff" },
+        { id: "c2", pts: [[435, 385], [565, 385], [642, 445]], start: 1.35, dur: 0.65, color: "#38bdf8" },
+        { id: "c3", pts: [[200, 515], [625, 515]], start: 1.40, dur: 0.70, color: "#00f0ff" },
+        { id: "c4", pts: [[415, 695], [560, 695], [652, 612]], start: 1.50, dur: 0.70, color: "#38bdf8" },
+        // Left inter-node mesh
+        { id: "c5", pts: [[230, 295], [230, 420], [200, 515]], start: 1.55, dur: 0.65, color: "#2979ff" },
+        { id: "c6", pts: [[200, 515], [275, 595], [415, 695]], start: 1.65, dur: 0.65, color: "#2979ff" },
+        { id: "c7", pts: [[435, 385], [435, 585], [415, 695]], start: 1.75, dur: 0.65, color: "#38bdf8" },
+
+        // Right wing to Core
+        { id: "c8",  pts: [[1690, 295], [1425, 295], [1272, 382]], start: 1.25, dur: 0.75, color: "#00f0ff" },
+        { id: "c9",  pts: [[1485, 385], [1355, 385], [1278, 445]], start: 1.35, dur: 0.65, color: "#38bdf8" },
+        { id: "c10", pts: [[1720, 515], [1295, 515]], start: 1.40, dur: 0.70, color: "#00f0ff" },
+        { id: "c11", pts: [[1505, 695], [1360, 695], [1268, 612]], start: 1.50, dur: 0.70, color: "#38bdf8" },
+        // Right inter-node mesh
+        { id: "c12", pts: [[1690, 295], [1690, 420], [1720, 515]], start: 1.55, dur: 0.65, color: "#2979ff" },
+        { id: "c13", pts: [[1720, 515], [1645, 595], [1505, 695]], start: 1.65, dur: 0.65, color: "#2979ff" },
+        { id: "c14", pts: [[1485, 385], [1485, 585], [1505, 695]], start: 1.75, dur: 0.65, color: "#38bdf8" }
+      ];
+
+      const conduitsGroup = document.getElementById("network-conduits");
+      const pulsesGroup = document.getElementById("network-pulses");
+      const packetsGroup = document.getElementById("network-packets");
+      const nodesGroup = document.getElementById("peripheral-nodes");
+      const nodeLabelsLayer = document.getElementById("node-labels-layer");
+
+      const conduitMeta = [];
+
+      conduitsData.forEach((c) => {
+        const d = c.pts.map((p, idx) => (idx === 0 ? "M" : "L") + " " + p[0] + " " + p[1]).join(" ");
+
+        // Base dim conduit
+        const basePath = createSvgEl("path", {
+          id: "conduit-base-" + c.id,
+          class: "clip",
+          "data-start": c.start,
+          "data-duration": c.dur,
+          d,
+          fill: "none",
+          stroke: "#1c4a8a",
+          "stroke-width": "1.6",
+          "stroke-opacity": "0.55"
+        });
+        conduitsGroup.appendChild(basePath);
+
+        const len = basePath.getTotalLength();
+        basePath.setAttribute("stroke-dasharray", len.toFixed(2));
+        basePath.setAttribute("stroke-dashoffset", len.toFixed(2));
+
+        // High-luminance convergence overlay path (lights up during sync completion)
+        const activePath = createSvgEl("path", {
+          id: "conduit-active-" + c.id,
+          class: "clip",
+          "data-start": 5.2,
+          "data-duration": 2.8,
+          d,
+          fill: "none",
+          stroke: c.color,
+          "stroke-width": "1.8",
+          "stroke-opacity": "0"
+        });
+        conduitsGroup.appendChild(activePath);
+
+        // Moving luminous pulse streaks along conduit
+        const pulseLen = 58;
+        const pulse1 = createSvgEl("path", {
+          id: "pulse-a-" + c.id,
+          class: "clip",
+          "data-start": 2.0,
+          "data-duration": 3.5,
+          d,
+          fill: "none",
+          stroke: "#00f0ff",
+          "stroke-width": "2.6",
+          "stroke-linecap": "round",
+          "stroke-dasharray": `${pulseLen} ${(len + 200).toFixed(2)}`,
+          "stroke-dashoffset": (pulseLen + 10).toFixed(2),
+          "stroke-opacity": "0",
+          filter: "url(#glow-soft)"
+        });
+        pulsesGroup.appendChild(pulse1);
+
+        const pulse2 = createSvgEl("path", {
+          id: "pulse-b-" + c.id,
+          class: "clip",
+          "data-start": 3.4,
+          "data-duration": 3.4,
+          d,
+          fill: "none",
+          stroke: c.id === "c2" || c.id === "c9" ? "#ffb300" : "#7ef9ff",
+          "stroke-width": "2.2",
+          "stroke-linecap": "round",
+          "stroke-dasharray": `${pulseLen * 0.75} ${(len + 200).toFixed(2)}`,
+          "stroke-dashoffset": (pulseLen + 10).toFixed(2),
+          "stroke-opacity": "0",
+          filter: "url(#glow-soft)"
+        });
+        pulsesGroup.appendChild(pulse2);
+
+        conduitMeta.push({ c, basePath, activePath, pulse1, pulse2, len, pulseLen });
+      });
+
+      // Build Node SVG elements & HTML Labels
+      const nodeElements = [];
+      nodesData.forEach((n) => {
+        const g = createSvgEl("g", {
+          id: "node-" + n.id,
+          class: "clip",
+          "data-start": n.start,
+          "data-duration": (8 - n.start).toFixed(2),
+          transform: `translate(${n.x}, ${n.y})`,
+          opacity: "0"
+        });
+
+        // Outer halo ring
+        const halo = createSvgEl("circle", {
+          cx: 0, cy: 0, r: 24,
+          fill: "rgba(0, 240, 255, 0.05)",
+          stroke: "#2979ff",
+          "stroke-width": "1",
+          "stroke-dasharray": "6 4"
+        });
+        // Inner octagon frame
+        const oct = createSvgEl("polygon", {
+          points: "0,-15 11,-11 15,0 11,11 0,15 -11,11 -15,0 -11,-11",
+          fill: "#061636",
+          stroke: "#00f0ff",
+          "stroke-width": "1.6"
+        });
+        // Core dot
+        const core = createSvgEl("circle", {
+          cx: 0, cy: 0, r: 4.5,
+          fill: "#00f0ff",
+          filter: "url(#glow-soft)"
+        });
+        // Pulse ring on activation
+        const ping = createSvgEl("circle", {
+          cx: 0, cy: 0, r: 16,
+          fill: "none",
+          stroke: "#00f0ff",
+          "stroke-width": "1.5",
+          opacity: "0"
+        });
+
+        g.appendChild(halo);
+        g.appendChild(oct);
+        g.appendChild(core);
+        g.appendChild(ping);
+        nodesGroup.appendChild(g);
+
+        // HTML Label
+        const label = document.createElement("div");
+        label.className = "node-hud-label mono clip";
+        label.setAttribute("data-start", (n.start + 0.15).toFixed(2));
+        label.setAttribute("data-duration", (8 - (n.start + 0.15)).toFixed(2));
+        label.style.left = n.lx + "px";
+        label.style.top = n.ly + "px";
+        if (n.align === "right") {
+          label.style.textAlign = "right";
+          label.style.width = "120px";
+        }
+        label.innerHTML = `<div class="node-code">${n.id}</div><div class="node-role">${n.role}</div>`;
+        nodeLabelsLayer.appendChild(label);
+
+        nodeElements.push({ n, g, halo, oct, core, ping, label });
+      });
+
+      // Deterministic Packet Schedule (each packet has a dedicated SVG sprite for 100% seekability)
+      const packetSpecs = [
+        // Stage 2: Network Establishment packets
+        { conduitIdx: 0,  t0: 1.95, dur: 1.05, r: 4.0, color: "#00f0ff", reverse: false },
+        { conduitIdx: 7,  t0: 2.00, dur: 1.05, r: 4.0, color: "#00f0ff", reverse: false },
+        { conduitIdx: 2,  t0: 2.15, dur: 0.90, r: 4.5, color: "#7ef9ff", reverse: false },
+        { conduitIdx: 9,  t0: 2.20, dur: 0.90, r: 4.5, color: "#7ef9ff", reverse: false },
+        { conduitIdx: 1,  t0: 2.45, dur: 0.85, r: 3.5, color: "#38bdf8", reverse: false },
+        { conduitIdx: 8,  t0: 2.50, dur: 0.85, r: 3.5, color: "#38bdf8", reverse: false },
+        { conduitIdx: 3,  t0: 2.60, dur: 0.90, r: 3.8, color: "#00f0ff", reverse: false },
+        { conduitIdx: 10, t0: 2.65, dur: 0.90, r: 3.8, color: "#00f0ff", reverse: false },
+        { conduitIdx: 4,  t0: 2.35, dur: 0.80, r: 3.0, color: "#60a5fa", reverse: false },
+        { conduitIdx: 11, t0: 2.40, dur: 0.80, r: 3.0, color: "#60a5fa", reverse: false },
+
+        // Stage 3: High-Speed Transmission packets (faster, higher density, bidirectional)
+        { conduitIdx: 0,  t0: 3.42, dur: 0.68, r: 4.5, color: "#ffffff", reverse: false },
+        { conduitIdx: 7,  t0: 3.45, dur: 0.68, r: 4.5, color: "#ffffff", reverse: false },
+        { conduitIdx: 2,  t0: 3.55, dur: 0.58, r: 5.0, color: "#00f0ff", reverse: true  },
+        { conduitIdx: 9,  t0: 3.58, dur: 0.58, r: 5.0, color: "#00f0ff", reverse: true  },
+        { conduitIdx: 1,  t0: 3.72, dur: 0.55, r: 3.8, color: "#ffb300", reverse: false },
+        { conduitIdx: 8,  t0: 3.76, dur: 0.55, r: 3.8, color: "#ffb300", reverse: false },
+        { conduitIdx: 3,  t0: 3.85, dur: 0.62, r: 4.2, color: "#7ef9ff", reverse: false },
+        { conduitIdx: 10, t0: 3.88, dur: 0.62, r: 4.2, color: "#7ef9ff", reverse: false },
+        { conduitIdx: 5,  t0: 3.95, dur: 0.58, r: 3.2, color: "#38bdf8", reverse: false },
+        { conduitIdx: 12, t0: 3.98, dur: 0.58, r: 3.2, color: "#38bdf8", reverse: false },
+        { conduitIdx: 6,  t0: 4.10, dur: 0.55, r: 3.5, color: "#ffb300", reverse: true  },
+        { conduitIdx: 13, t0: 4.14, dur: 0.55, r: 3.5, color: "#ffb300", reverse: true  },
+        { conduitIdx: 0,  t0: 4.45, dur: 0.64, r: 4.4, color: "#00f0ff", reverse: true  },
+        { conduitIdx: 7,  t0: 4.48, dur: 0.64, r: 4.4, color: "#00f0ff", reverse: true  },
+        { conduitIdx: 2,  t0: 4.62, dur: 0.54, r: 4.8, color: "#ffffff", reverse: false },
+        { conduitIdx: 9,  t0: 4.65, dur: 0.54, r: 4.8, color: "#ffffff", reverse: false },
+        { conduitIdx: 3,  t0: 4.82, dur: 0.60, r: 4.2, color: "#00f0ff", reverse: false },
+        { conduitIdx: 10, t0: 4.85, dur: 0.60, r: 4.2, color: "#00f0ff", reverse: false },
+
+        // Stage 4: Convergence into Core & Stabilization
+        { conduitIdx: 0,  t0: 5.25, dur: 0.72, r: 4.6, color: "#7ef9ff", reverse: false },
+        { conduitIdx: 7,  t0: 5.28, dur: 0.72, r: 4.6, color: "#7ef9ff", reverse: false },
+        { conduitIdx: 1,  t0: 5.40, dur: 0.65, r: 4.0, color: "#00f0ff", reverse: false },
+        { conduitIdx: 8,  t0: 5.42, dur: 0.65, r: 4.0, color: "#00f0ff", reverse: false },
+        { conduitIdx: 2,  t0: 5.55, dur: 0.60, r: 5.0, color: "#ffffff", reverse: false },
+        { conduitIdx: 9,  t0: 5.58, dur: 0.60, r: 5.0, color: "#ffffff", reverse: false },
+        { conduitIdx: 3,  t0: 5.65, dur: 0.68, r: 4.2, color: "#00f0ff", reverse: false },
+        { conduitIdx: 10, t0: 5.68, dur: 0.68, r: 4.2, color: "#00f0ff", reverse: false },
+        { conduitIdx: 2,  t0: 6.50, dur: 0.75, r: 3.8, color: "#38bdf8", reverse: true  },
+        { conduitIdx: 9,  t0: 6.55, dur: 0.75, r: 3.8, color: "#38bdf8", reverse: true  }
+      ];
+
+      // Build Packet SVG elements
+      const packetSprites = packetSpecs.map((spec, idx) => {
+        const pts = spec.reverse ? [...conduitsData[spec.conduitIdx].pts].reverse() : conduitsData[spec.conduitIdx].pts;
+        const el = createSvgEl("circle", {
+          id: "pkt-" + idx,
+          class: "clip",
+          "data-start": spec.t0.toFixed(2),
+          "data-duration": spec.dur.toFixed(2),
+          cx: 0,
+          cy: 0,
+          r: spec.r,
+          fill: spec.color,
+          filter: "url(#glow-soft)",
+          opacity: "0"
+        });
+        packetsGroup.appendChild(el);
+        return { el, pts, spec };
+      });
+
+      // 3. Telemetry numeric proxy (only used for updating numeric text readouts deterministically)
+      const telemetryState = {
+        progress: 0,
+        throughput: 0,
+        latency: 28.0,
+        packets: 0,
+        nodes: 0
+      };
+
+      const elPctNum = document.getElementById("sync-pct-num");
+      const elThroughput = document.getElementById("val-throughput");
+      const elLatency = document.getElementById("val-latency");
+      const elPackets = document.getElementById("val-packets");
+      const elNodes = document.getElementById("val-nodes");
+
+      function renderTelemetryText() {
+        elPctNum.textContent = String(Math.round(telemetryState.progress));
+        elThroughput.textContent = telemetryState.throughput.toFixed(2).padStart(5, "0");
+        elLatency.textContent = telemetryState.latency.toFixed(1);
+        elPackets.textContent = Math.round(telemetryState.packets).toLocaleString("en-US").padStart(5, "0");
+        elNodes.textContent = String(Math.round(telemetryState.nodes));
+      }
+      renderTelemetryText();
+
+      // 4. Master GSAP Timeline (paused, exact 8.0s duration, deterministic & seekable)
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      window.__timelines["main"] = tl;
+
+      // =========================================================
+      // STAGE 1: 0.0 - 1.0s | SYSTEM INITIALIZATION
+      // =========================================================
+      tl.fromTo("#bg-grid", { opacity: 0 }, { opacity: 0.75, duration: 0.8, ease: "power2.out" }, 0.05);
+      tl.fromTo("#core-aura", { opacity: 0, scale: 0.7, transformOrigin: "960px 515px" }, { opacity: 0.6, scale: 1, duration: 1.0, ease: "power2.out" }, 0.0);
+
+      // Perimeter border & corner brackets
+      const outerBorder = document.getElementById("outer-border");
+      const borderLen = outerBorder.getTotalLength();
+      outerBorder.setAttribute("stroke-dasharray", borderLen.toFixed(2));
+      outerBorder.setAttribute("stroke-dashoffset", borderLen.toFixed(2));
+      tl.fromTo(outerBorder, { strokeDashoffset: borderLen, opacity: 0 }, { strokeDashoffset: 0, opacity: 0.65, duration: 0.85, ease: "power2.inOut" }, 0.05);
+
+      ["#corner-tl", "#corner-tr", "#corner-bl", "#corner-br"].forEach((sel) => {
+        const el = document.querySelector(sel);
+        const l = el.getTotalLength();
+        el.setAttribute("stroke-dasharray", l.toFixed(2));
+        el.setAttribute("stroke-dashoffset", l.toFixed(2));
+        tl.fromTo(el, { strokeDashoffset: l, opacity: 0 }, { strokeDashoffset: 0, opacity: 1, duration: 0.55, ease: "power2.out" }, 0.12);
+      });
+
+      tl.fromTo(["#axis-left", "#axis-right", "#axis-top", "#axis-bottom"], { opacity: 0 }, { opacity: 0.55, duration: 0.6, ease: "power1.out" }, 0.25);
+
+      // Core Formation
+      tl.fromTo("#core-nucleus", { opacity: 0, scale: 0.25, transformOrigin: "0px 0px" }, { opacity: 1, scale: 1, duration: 0.75, ease: "back.out(1.4)" }, 0.15);
+      tl.fromTo("#core-inner-lattice", { opacity: 0, scale: 0.72, rotation: -35, transformOrigin: "0px 0px" }, { opacity: 1, scale: 1, rotation: 0, duration: 0.85, ease: "power3.out" }, 0.25);
+      tl.fromTo("#core-ring-outer", { opacity: 0, scale: 0.86, transformOrigin: "0px 0px" }, { opacity: 0.9, scale: 1, duration: 0.8, ease: "power2.out" }, 0.28);
+      tl.fromTo("#core-ring-tech", { opacity: 0, scale: 0.88, transformOrigin: "0px 0px" }, { opacity: 0.9, scale: 1, duration: 0.75, ease: "power2.out" }, 0.35);
+      tl.fromTo("#core-ring-dashed", { opacity: 0, scale: 0.9, transformOrigin: "0px 0px" }, { opacity: 0.85, scale: 1, duration: 0.7, ease: "power2.out" }, 0.42);
+      tl.fromTo("#core-center-readout", { opacity: 0 }, { opacity: 0.85, duration: 0.5, ease: "power2.out" }, 0.55);
+
+      // Progressive Reveal of Title & HUD Modules
+      tl.fromTo("#title-block",
+        { opacity: 0, y: 14, clipPath: "inset(0 100% 0 0)" },
+        { opacity: 1, y: 0, clipPath: "inset(0 0% 0 0)", duration: 0.75, ease: "power3.out" },
+        0.25
+      );
+      tl.fromTo("#top-right-telemetry",
+        { opacity: 0, y: -12 },
+        { opacity: 1, y: 0, duration: 0.65, ease: "power2.out" },
+        0.35
+      );
+      tl.fromTo("#bottom-left-telemetry",
+        { opacity: 0, y: 14 },
+        { opacity: 1, y: 0, duration: 0.65, ease: "power2.out" },
+        0.40
+      );
+      tl.fromTo("#bottom-right-telemetry",
+        { opacity: 0, y: 14 },
+        { opacity: 1, y: 0, duration: 0.65, ease: "power2.out" },
+        0.40
+      );
+      tl.fromTo("#sync-module",
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.65, ease: "power2.out" },
+        0.42
+      );
+
+      // =========================================================
+      // STAGE 2: 1.0 - 3.4s | NETWORK ESTABLISHMENT
+      // =========================================================
+      // Status text transition: INITIALIZING -> ESTABLISHING
+      tl.fromTo("#status-init", { opacity: 1 }, { opacity: 0, duration: 0.18, ease: "none" }, 0.96);
+      tl.fromTo("#status-est", { opacity: 0 }, { opacity: 1, duration: 0.22, ease: "none" }, 1.00);
+
+      // Core Multi-Layer Continuous Deterministic Rotations across Stages 2-5
+      tl.to("#core-ring-outer", { rotation: 62, duration: 6.3, ease: "none" }, 1.0);
+      tl.to("#core-ring-tech", { rotation: -135, duration: 6.3, ease: "none" }, 1.0);
+      tl.to("#core-ring-dashed", { rotation: 108, duration: 6.3, ease: "none" }, 1.0);
+      tl.to("#core-inner-lattice", { rotation: 45, duration: 6.3, ease: "none" }, 1.0);
+
+      // Final gentle settling rotation in Stage 5 (7.3 -> 8.0)
+      tl.to("#core-ring-outer", { rotation: 66, duration: 0.7, ease: "power1.out" }, 7.3);
+      tl.to("#core-ring-tech", { rotation: -140, duration: 0.7, ease: "power1.out" }, 7.3);
+      tl.to("#core-ring-dashed", { rotation: 112, duration: 0.7, ease: "power1.out" }, 7.3);
+      tl.to("#core-inner-lattice", { rotation: 48, duration: 0.7, ease: "power1.out" }, 7.3);
+
+      // Nodes materialize in pairs
+      nodeElements.forEach(({ n, g, ping, label }) => {
+        tl.fromTo(g, { opacity: 0, scale: 0.3, transformOrigin: "0px 0px" }, { opacity: 1, scale: 1, duration: 0.42, ease: "back.out(1.6)" }, n.start);
+        tl.fromTo(ping, { opacity: 0.9, attr: { r: 15 } }, { opacity: 0, attr: { r: 38 }, duration: 0.65, ease: "power2.out" }, n.start + 0.08);
+        tl.fromTo(label, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.38, ease: "power2.out" }, n.start + 0.14);
+      });
+
+      // Conduits draw in smoothly
+      conduitMeta.forEach(({ c, basePath, len }) => {
+        tl.fromTo(basePath,
+          { strokeDashoffset: len },
+          { strokeDashoffset: 0, duration: c.dur, ease: "power2.inOut" },
+          c.start
+        );
+      });
+
+      // Light pulses along paths (Stage 2 -> Stage 4)
+      conduitMeta.forEach(({ pulse1, pulse2, len, pulseLen }, idx) => {
+        const stagger = (idx % 4) * 0.16;
+        tl.fromTo(pulse1,
+          { strokeDashoffset: pulseLen + 10, strokeOpacity: 0 },
+          { strokeOpacity: 0.9, duration: 0.15, ease: "none" },
+          2.0 + stagger
+        );
+        tl.to(pulse1,
+          { strokeDashoffset: -(len + 60), duration: 1.15, ease: "none" },
+          2.0 + stagger
+        );
+        tl.to(pulse1, { strokeOpacity: 0, duration: 0.18, ease: "none" }, 2.95 + stagger);
+
+        // Second faster pulse wave in Stage 3
+        tl.fromTo(pulse2,
+          { strokeDashoffset: pulseLen + 10, strokeOpacity: 0 },
+          { strokeOpacity: 0.95, duration: 0.12, ease: "none" },
+          3.45 + stagger * 0.8
+        );
+        tl.to(pulse2,
+          { strokeDashoffset: -(len + 60), duration: 0.85, ease: "none" },
+          3.45 + stagger * 0.8
+        );
+        tl.to(pulse2, { strokeOpacity: 0, duration: 0.14, ease: "none" }, 4.18 + stagger * 0.8);
+      });
+
+      // Signal strength bars step up (bars 1..6 during Stage 2)
+      const sigTimes = [1.15, 1.35, 1.55, 1.80, 2.15, 2.55];
+      sigTimes.forEach((t, i) => {
+        tl.fromTo(`#sig-${i + 1}`, { opacity: 0.14 }, { opacity: 1, duration: 0.2, ease: "power1.out" }, t);
+      });
+
+      // Channel strips come online
+      for (let i = 1; i <= 8; i++) {
+        const t = 1.2 + (i - 1) * 0.15;
+        tl.fromTo(`#ch-fill-${i}`, { opacity: 0, scaleX: 0, transformOrigin: "left center" }, { opacity: 1, scaleX: 1, duration: 0.25, ease: "power2.out" }, t);
+        tl.to(`#ch-${i}`, { color: "#bae6fd", borderColor: "rgba(0, 240, 255, 0.52)", duration: 0.25, ease: "power1.out" }, t);
+      }
+
+      // =========================================================
+      // STAGE 2-5 CONTINUOUS NUMERIC & PROGRESS DRIVERS (0 -> 8s)
+      // =========================================================
+      // Progress: 0 (0-2.4s) -> 24 (2.4-3.4s) -> 84 (3.4-5.2s) -> 100 (5.2-6.25s) -> 100 (6.25-8.0s)
+      tl.fromTo(telemetryState,
+        { progress: 0, throughput: 0, latency: 28.0, packets: 0, nodes: 0 },
+        { progress: 0, throughput: 0, latency: 28.0, packets: 0, nodes: 0, duration: 1.0, ease: "none", onUpdate: renderTelemetryText },
+        0
+      );
+      tl.to(telemetryState,
+        { progress: 0, throughput: 4.8, latency: 21.5, packets: 1240, nodes: 8, duration: 1.4, ease: "power1.inOut", onUpdate: renderTelemetryText },
+        1.0
+      );
+      tl.to(telemetryState,
+        { progress: 24, throughput: 14.2, latency: 14.6, packets: 3820, nodes: 8, duration: 1.0, ease: "power1.inOut", onUpdate: renderTelemetryText },
+        2.4
+      );
+      tl.to(telemetryState,
+        { progress: 84, throughput: 46.8, latency: 4.2, packets: 10240, nodes: 8, duration: 1.8, ease: "power1.inOut", onUpdate: renderTelemetryText },
+        3.4
+      );
+      tl.to(telemetryState,
+        { progress: 100, throughput: 48.6, latency: 1.2, packets: 12480, nodes: 8, duration: 1.05, ease: "power2.out", onUpdate: renderTelemetryText },
+        5.2
+      );
+      tl.to(telemetryState,
+        { progress: 100, throughput: 48.6, latency: 1.2, packets: 12480, nodes: 8, duration: 1.75, ease: "none", onUpdate: renderTelemetryText },
+        6.25
+      );
+
+      // Sync Progress Bar & Core Radial Arc (exact match to progress curve)
+      // Circumference = 1093.27
+      tl.fromTo("#sync-bar-fill", { scaleX: 0 }, { scaleX: 0.24, duration: 1.0, ease: "power1.inOut" }, 2.4);
+      tl.to("#sync-bar-fill", { scaleX: 0.84, duration: 1.8, ease: "power1.inOut" }, 3.4);
+      tl.to("#sync-bar-fill", { scaleX: 1.0, duration: 1.05, ease: "power2.out" }, 5.2);
+
+      tl.fromTo("#core-sync-arc", { strokeDashoffset: 1093.27 }, { strokeDashoffset: 1093.27 * 0.76, duration: 1.0, ease: "power1.inOut" }, 2.4);
+      tl.to("#core-sync-arc", { strokeDashoffset: 1093.27 * 0.16, duration: 1.8, ease: "power1.inOut" }, 3.4);
+      tl.to("#core-sync-arc", { strokeDashoffset: 0, duration: 1.05, ease: "power2.out" }, 5.2);
+
+      // =========================================================
+      // DATA PACKETS ALONG EXACT GEOMETRIC PATH SEGMENTS
+      // =========================================================
+      packetSprites.forEach(({ el, pts, spec }) => {
+        // Compute segment lengths
+        const segLens = [];
+        let totalLen = 0;
+        for (let i = 0; i < pts.length - 1; i++) {
+          const dx = pts[i + 1][0] - pts[i][0];
+          const dy = pts[i + 1][1] - pts[i][1];
+          const d = Math.hypot(dx, dy);
+          segLens.push(d);
+          totalLen += d;
+        }
+
+        // Initial position + fade in/out
+        tl.fromTo(el,
+          { attr: { cx: pts[0][0], cy: pts[0][1] }, opacity: 0 },
+          { opacity: 1, duration: 0.10, ease: "power1.out" },
+          spec.t0
+        );
+
+        let cursorT = spec.t0;
+        for (let i = 0; i < segLens.length; i++) {
+          const segDur = spec.dur * (segLens[i] / totalLen);
+          tl.to(el,
+            { attr: { cx: pts[i + 1][0], cy: pts[i + 1][1] }, duration: segDur, ease: "none" },
+            cursorT
+          );
+          cursorT += segDur;
+        }
+
+        tl.to(el, { opacity: 0, duration: 0.12, ease: "power1.in" }, spec.t0 + spec.dur - 0.12);
+      });
+
+      // =========================================================
+      // STAGE 3: 3.4 - 5.2s | HIGH-SPEED TRANSMISSION & CONTROLLED GLITCH
+      // =========================================================
+      tl.to("#status-est", { opacity: 0, duration: 0.15, ease: "none" }, 3.36);
+      tl.fromTo("#status-tx", { opacity: 0 }, { opacity: 1, duration: 0.2, ease: "none" }, 3.40);
+
+      tl.to("#core-aura", { opacity: 0.85, scale: 1.08, duration: 1.6, ease: "power1.inOut" }, 3.4);
+
+      // Central Core Pulse Waves
+      tl.fromTo("#core-pulse-1", { opacity: 0.85, attr: { r: 46 } }, { opacity: 0, attr: { r: 280 }, duration: 0.88, ease: "power2.out" }, 3.45);
+      tl.fromTo("#core-pulse-2", { opacity: 0.75, attr: { r: 46 } }, { opacity: 0, attr: { r: 295 }, duration: 0.88, ease: "power2.out" }, 4.05);
+      tl.fromTo("#core-pulse-3", { opacity: 0.85, attr: { r: 46 } }, { opacity: 0, attr: { r: 310 }, duration: 0.88, ease: "power2.out" }, 4.65);
+
+      // Controlled Glitch / Signal Interference (4.12 - 4.68s)
+      tl.to("#status-tx", { opacity: 0, duration: 0.06, ease: "none" }, 4.12);
+      tl.fromTo("#status-glitch", { opacity: 0 }, { opacity: 1, duration: 0.08, ease: "none" }, 4.12);
+      tl.to("#status-glitch", { opacity: 0, duration: 0.08, ease: "none" }, 4.60);
+      tl.to("#status-tx", { opacity: 1, duration: 0.10, ease: "none" }, 4.64);
+
+      // Signal bar #6 brief dip during interference
+      tl.to("#sig-6", { opacity: 0.25, backgroundColor: "#ffb300", duration: 0.08, ease: "none" }, 4.20);
+      tl.to("#sig-6", { opacity: 1, backgroundColor: "#00f0ff", duration: 0.12, ease: "none" }, 4.54);
+
+      // Core chromatic slice micro-shifts (finite deterministic keyframes)
+      tl.fromTo("#core-glitch-cyan", { opacity: 0, x: 0, y: 0 }, { opacity: 0.85, x: -7, y: 2, duration: 0.07, ease: "none" }, 4.14);
+      tl.to("#core-glitch-cyan", { opacity: 0.4, x: 5, y: -2, duration: 0.08, ease: "none" }, 4.22);
+      tl.to("#core-glitch-cyan", { opacity: 0.9, x: -4, y: 1, duration: 0.08, ease: "none" }, 4.33);
+      tl.to("#core-glitch-cyan", { opacity: 0.3, x: 3, y: 0, duration: 0.08, ease: "none" }, 4.44);
+      tl.to("#core-glitch-cyan", { opacity: 0, x: 0, y: 0, duration: 0.08, ease: "none" }, 4.55);
+
+      tl.fromTo("#core-glitch-amber", { opacity: 0, x: 0, y: 0 }, { opacity: 0.75, x: 6, y: -2, duration: 0.08, ease: "none" }, 4.16);
+      tl.to("#core-glitch-amber", { opacity: 0.3, x: -5, y: 2, duration: 0.08, ease: "none" }, 4.26);
+      tl.to("#core-glitch-amber", { opacity: 0.8, x: 4, y: -1, duration: 0.08, ease: "none" }, 4.37);
+      tl.to("#core-glitch-amber", { opacity: 0, x: 0, y: 0, duration: 0.09, ease: "none" }, 4.52);
+
+      // Horizontal slice bars
+      tl.fromTo("#glitch-bar-1", { opacity: 0, x: -24 }, { opacity: 0.8, x: 18, duration: 0.09, ease: "none" }, 4.14);
+      tl.to("#glitch-bar-1", { opacity: 0.25, x: -12, duration: 0.12, ease: "none" }, 4.25);
+      tl.to("#glitch-bar-1", { opacity: 0.75, x: 14, duration: 0.08, ease: "none" }, 4.40);
+      tl.to("#glitch-bar-1", { opacity: 0, x: 0, duration: 0.08, ease: "none" }, 4.52);
+
+      tl.fromTo("#glitch-bar-2", { opacity: 0, x: 20 }, { opacity: 0.7, x: -16, duration: 0.1, ease: "none" }, 4.18);
+      tl.to("#glitch-bar-2", { opacity: 0, x: 0, duration: 0.1, ease: "none" }, 4.48);
+
+      // Signal bar #7 & #8 lock in after interference clears
+      tl.fromTo("#sig-7", { opacity: 0.14 }, { opacity: 1, duration: 0.25, ease: "power2.out" }, 4.85);
+      tl.fromTo("#sig-8", { opacity: 0.14 }, { opacity: 1, duration: 0.25, ease: "power2.out" }, 5.35);
+
+      // =========================================================
+      // STAGE 4: 5.2 - 7.3s | SYNCHRONIZATION COMPLETE
+      // =========================================================
+      // All network conduits illuminate into unified harmonic state
+      conduitMeta.forEach(({ activePath }, idx) => {
+        tl.fromTo(activePath,
+          { strokeOpacity: 0 },
+          { strokeOpacity: 0.72, duration: 0.65, ease: "power2.out" },
+          5.2 + (idx % 4) * 0.06
+        );
+        // Convergence peak flash at 100%
+        tl.to(activePath, { strokeOpacity: 1.0, duration: 0.28, ease: "power2.out" }, 6.22);
+        tl.to(activePath, { strokeOpacity: 0.62, duration: 0.65, ease: "power2.inOut" }, 6.55);
+      });
+
+      // Core 100% Sync Lock Flash & Aura Surge
+      tl.fromTo("#core-sync-flash",
+        { opacity: 0, attr: { r: 174 }, strokeWidth: 5 },
+        { opacity: 0.95, attr: { r: 342 }, strokeWidth: 1, duration: 0.95, ease: "power3.out" },
+        6.22
+      );
+      tl.to("#core-sync-flash", { opacity: 0, duration: 0.25, ease: "none" }, 7.0);
+
+      // Status transitions to SYNCHRONIZED & SYNCHRONIZATION COMPLETE
+      tl.to("#status-tx", { opacity: 0, duration: 0.2, ease: "none" }, 6.12);
+      tl.fromTo("#status-sync", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "power2.out" }, 6.18);
+
+      tl.fromTo("#sync-label-progress", { opacity: 1, y: 0 }, { opacity: 0, y: -6, duration: 0.25, ease: "power2.in" }, 6.10);
+      tl.fromTo("#sync-label-complete", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, 6.22);
+
+      // =========================================================
+      // STAGE 5: 7.3 - 8.0s | FINAL HOLD (deterministic ambient glow)
+      // =========================================================
+      tl.to("#core-aura", { opacity: 0.95, scale: 1.12, duration: 0.35, ease: "sine.inOut" }, 7.3);
+      tl.to("#core-aura", { opacity: 0.85, scale: 1.08, duration: 0.35, ease: "sine.inOut" }, 7.65);
+
+      // Ensure exact 8.000s total duration
+      tl.to("#core-center-readout", { opacity: 0.92, duration: 0.7, ease: "sine.inOut" }, 7.3);
+    })();
+  </script>
+</body>
+</html>

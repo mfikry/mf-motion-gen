@@ -1,0 +1,16 @@
+{
+  "rawFile": "compositions/ai_studio_code.html",
+  "adaptedFile": "compositions/ai_studio_adapted.html",
+  "renderOutput": "renders/gemini_ai_rendered.mp4",
+  "checks": {
+    "canImportRawDirectly": false,
+    "reasonRawFailed": "Missing data-composition-id/data-duration attributes on root container, plus external CDN GSAP dependency",
+    "canImportWithAdapter": true,
+    "renderSucceeded": true
+  },
+  "adapterRulesApplied": [
+    "Localized CDN GSAP script tag to local bundle (assets/gsap.min.js)",
+    "Injected root contract attributes: data-composition-id='main' data-start='0' data-duration='8' data-width='1920' data-height='1080' data-fps='30'",
+    "Verified window.__timelines['main'] paused GSAP registration"
+  ]
+}

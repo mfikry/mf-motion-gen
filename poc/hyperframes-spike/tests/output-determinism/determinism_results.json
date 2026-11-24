@@ -1,0 +1,55 @@
+{
+  "testDate": "2026-11-23T04:19:13.348Z",
+  "matchFrame10": false,
+  "matchFrame90": false,
+  "results": {
+    "frame90_first": {
+      "frame": 90,
+      "timeSec": 3,
+      "filePath": "F:\\PROJECT\\MF Motion Gen\\poc\\hyperframes-spike\\tests\\output-determinism\\frame90_first.png",
+      "hash": "0a42a0c2415e6d1458dd141425d92d085ea03d820de2f7dd41055252be8451c8"
+    },
+    "frame10_first": {
+      "frame": 10,
+      "timeSec": 0.3333333333333333,
+      "filePath": "F:\\PROJECT\\MF Motion Gen\\poc\\hyperframes-spike\\tests\\output-determinism\\frame10_first.png",
+      "hash": "733034969eed7263a91e51e7dbdae590261b3bef9c9c1787707f6a7b6e264fc5"
+    },
+    "frame50_first": {
+      "frame": 50,
+      "timeSec": 1.6666666666666667,
+      "filePath": "F:\\PROJECT\\MF Motion Gen\\poc\\hyperframes-spike\\tests\\output-determinism\\frame50_first.png",
+      "hash": "a4ba9e539d5bf5dce05897977c59daed72d6fcb6f68d4a8ac151325222b71984"
+    },
+    "frame10_repeat_backward": {
+      "frame": 10,
+      "timeSec": 0.3333333333333333,
+      "filePath": "F:\\PROJECT\\MF Motion Gen\\poc\\hyperframes-spike\\tests\\output-determinism\\frame10_repeat_backward.png",
+      "hash": "4901e25992e6c713125b06ec09ecf6c11c333cb93e01ad9b146df8098c2b8d6b"
+    },
+    "frame90_repeat_forward": {
+      "frame": 90,
+      "timeSec": 3,
+      "filePath": "F:\\PROJECT\\MF Motion Gen\\poc\\hyperframes-spike\\tests\\output-determinism\\frame90_repeat_forward.png",
+      "hash": "642ff02404d500129cd64cc312ed27b5aa3160f9ec4a697d70aa57bcc199ebaf"
+    },
+    "frame000_start": {
+      "frame": 0,
+      "timeSec": 0,
+      "filePath": "F:\\PROJECT\\MF Motion Gen\\poc\\hyperframes-spike\\tests\\output-determinism\\frame000_start.png",
+      "hash": "c92434f25f174c70f0385abfdbaa0cd3858ae35aedce944306a0fb1e772d7a0f"
+    },
+    "frame120_midpoint": {
+      "frame": 120,
+      "timeSec": 4,
+      "filePath": "F:\\PROJECT\\MF Motion Gen\\poc\\hyperframes-spike\\tests\\output-determinism\\frame120_midpoint.png",
+      "hash": "7fd651a8b5d64403df62186bb540af9a0f89d191f58a5aa8bfb479714354b4d7"
+    },
+    "frame240_end": {
+      "frame": 240,
+      "timeSec": 8,
+      "filePath": "F:\\PROJECT\\MF Motion Gen\\poc\\hyperframes-spike\\tests\\output-determinism\\frame240_end.png",
+      "hash": "c4fbc6b93640f66d48c0ac5b3f4ef196a2e3c789fa91e6b60c65ec8769dad42c"
+    }
+  }
+}

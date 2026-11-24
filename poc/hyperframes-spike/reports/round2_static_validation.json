@@ -1,0 +1,229 @@
+{
+  "testDate": "2026-11-24T03:26:23.191Z",
+  "sourceFile": {
+    "path": "F:\\PROJECT\\MF Motion Gen\\poc\\hyperframes-spike\\fixtures\\round2\\ai_studio_code_round2.html",
+    "sha256": "8ca5da8d478e220c0aef9841b1f51363d2d9ce230178fea1bd4d6cf3305df66e",
+    "bytes": 33593
+  },
+  "referenceFile": {
+    "path": "F:\\PROJECT\\MF Motion Gen\\poc\\hyperframes-spike\\fixtures\\round2\\reference_breaking_news.mp4",
+    "sha256": "9d126a6be3572c2175afb2ece9687fce739bd76298e6239354ae84073cc553d6",
+    "bytes": 1632746
+  },
+  "workingCopy": {
+    "path": "F:\\PROJECT\\MF Motion Gen\\poc\\hyperframes-spike\\compositions\\round2\\breaking_news_localized.html",
+    "sha256": "a8b0165a90995d158f2028fe400bc10fdf76c09013cd5acb6ae902f6de7841bb",
+    "bytes": 33560,
+    "gsapLocalized": true
+  },
+  "rootAttributes": {
+    "compositionId": "main",
+    "start": 0,
+    "duration": 10,
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "pass": true
+  },
+  "clipAudit": [
+    {
+      "id": "bg-backdrop",
+      "role": "persistent-background",
+      "expected": {
+        "start": 0,
+        "dur": 10,
+        "end": 10
+      },
+      "actual": {
+        "start": 0,
+        "dur": 10,
+        "end": 10
+      },
+      "pass": true
+    },
+    {
+      "id": "bg-sparkles",
+      "role": "persistent-sparkles",
+      "expected": {
+        "start": 0,
+        "dur": 10,
+        "end": 10
+      },
+      "actual": {
+        "start": 0,
+        "dur": 10,
+        "end": 10
+      },
+      "pass": true
+    },
+    {
+      "id": "globe-stage",
+      "role": "persistent-globe",
+      "expected": {
+        "start": 0,
+        "dur": 10,
+        "end": 10
+      },
+      "actual": {
+        "start": 0,
+        "dur": 10,
+        "end": 10
+      },
+      "pass": true
+    },
+    {
+      "id": "blue-panel-wrap",
+      "role": "headline-blue-panel",
+      "expected": {
+        "start": 0.4,
+        "dur": 8.6,
+        "end": 9
+      },
+      "actual": {
+        "start": 0.4,
+        "dur": 8.6,
+        "end": 9
+      },
+      "pass": true
+    },
+    {
+      "id": "breaking-panel-wrap",
+      "role": "headline-breaking-bar",
+      "expected": {
+        "start": 0.5,
+        "dur": 8.5,
+        "end": 9
+      },
+      "actual": {
+        "start": 0.5,
+        "dur": 8.5,
+        "end": 9
+      },
+      "pass": true
+    },
+    {
+      "id": "news-text-wrap",
+      "role": "headline-news-typography",
+      "expected": {
+        "start": 1.2,
+        "dur": 8.8,
+        "end": 10
+      },
+      "actual": {
+        "start": 1.2,
+        "dur": 8.8,
+        "end": 10
+      },
+      "pass": true
+    },
+    {
+      "id": "live-badge-wrap",
+      "role": "headline-live-badge",
+      "expected": {
+        "start": 2.2,
+        "dur": 7.8,
+        "end": 10
+      },
+      "actual": {
+        "start": 2.2,
+        "dur": 7.8,
+        "end": 10
+      },
+      "pass": true
+    },
+    {
+      "id": "title-light-sheen",
+      "role": "transient-specular-sheen",
+      "expected": {
+        "start": 1.4,
+        "dur": 1.2,
+        "end": 2.6
+      },
+      "actual": {
+        "start": 1.4,
+        "dur": 1.2,
+        "end": 2.6
+      },
+      "pass": true
+    },
+    {
+      "id": "ticker-bar-wrap",
+      "role": "bottom-news-ticker",
+      "expected": {
+        "start": 2.4,
+        "dur": 6.4,
+        "end": 8.8
+      },
+      "actual": {
+        "start": 2.4,
+        "dur": 6.4,
+        "end": 8.8
+      },
+      "pass": true
+    }
+  ],
+  "runtime": {
+    "networkRequestsCount": 2,
+    "networkRequests": [
+      {
+        "url": "file:///F:/PROJECT/MF%20Motion%20Gen/poc/hyperframes-spike/compositions/round2/breaking_news_localized.html",
+        "method": "GET"
+      },
+      {
+        "url": "file:///F:/PROJECT/MF%20Motion%20Gen/poc/hyperframes-spike/assets/gsap.min.js",
+        "method": "GET"
+      }
+    ],
+    "consoleErrors": [],
+    "timeline": {
+      "exists": true,
+      "paused": true,
+      "duration": 10,
+      "totalDuration": 10,
+      "time": 0,
+      "progress": 0
+    },
+    "seekingSampleVerification": [
+      {
+        "time": 0,
+        "actualTime": 0,
+        "success": true
+      },
+      {
+        "time": 1,
+        "actualTime": 1,
+        "success": true
+      },
+      {
+        "time": 3,
+        "actualTime": 3,
+        "success": true
+      },
+      {
+        "time": 5,
+        "actualTime": 5,
+        "success": true
+      },
+      {
+        "time": 8,
+        "actualTime": 8,
+        "success": true
+      },
+      {
+        "time": 9,
+        "actualTime": 9,
+        "success": true
+      },
+      {
+        "time": 9.9667,
+        "actualTime": 9.9667,
+        "success": true
+      },
+      {
+        "time": 10,
+        "actualTime": 10,
+        "success": true
+      }
+    ]
+  }
+}
