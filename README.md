@@ -42,3 +42,8 @@ A separate Canvas JavaScript mode using `renderFrame(ctx, time, frame, totalFram
 - Preview/export parity and deterministic frame seeking are mandatory.
 - Imported HTML/JS is untrusted code and must be isolated.
 - Do not begin broad application implementation before the technical spike passes.
+
+## Development & CI Runtime
+
+- **Node.js `>= 22.0.0`** (`.nvmrc` / `.node-version`: `22`) is required for development and CI compatibility with `@hyperframes/engine@0.9.93`, `@hyperframes/producer@0.9.93`, and `electron@45.4.1` (internal runtime Node `v24.22.3`).
+- Offline-first verification commands: `npm run build`, `npm run typecheck`, `npm run test:unit`, `npm run test:e2e`, and `npm run test:e2e:sprint2`.
