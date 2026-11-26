@@ -8,11 +8,12 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:unit": "node --test tests/unit/preflightValidator.test.mjs tests/unit/securityProtocol.test.mjs tests/unit/frameMath.test.mjs tests/unit/archiveAndImport.test.mjs",
+    "test:unit": "node --test tests/unit/preflightValidator.test.mjs tests/unit/securityProtocol.test.mjs tests/unit/frameMath.test.mjs tests/unit/archiveAndImport.test.mjs tests/unit/staticAnalyzerAndDiff.test.mjs",
     "test:e2e": "node scripts/run-electron-e2e.mjs sprint1",
     "test:e2e:sprint2": "node scripts/run-electron-e2e.mjs sprint2",
     "test:e2e:sprint3": "node scripts/run-electron-e2e.mjs sprint3",
-    "test:e2e:sprint4": "node scripts/run-electron-e2e.mjs sprint4"
+    "test:e2e:sprint4": "node scripts/run-electron-e2e.mjs sprint4",
+    "test:e2e:sprint5": "node scripts/run-electron-e2e.mjs sprint5"
   },
   "dependencies": {
     "@hyperframes/engine": "0.9.93",

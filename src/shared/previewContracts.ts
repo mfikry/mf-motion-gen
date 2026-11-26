@@ -16,6 +16,12 @@ export const IPC_CHANNELS = {
   confirmImportEntry: "studio:confirmImportEntry",
   cancelPendingImport: "studio:cancelPendingImport",
   refreshAssetTree: "studio:refreshAssetTree",
+  runStaticAnalysis: "studio:runStaticAnalysis",
+  inspectElement: "studio:inspectElement",
+  clearInspectOverlay: "studio:clearInspectOverlay",
+  previewDiagnosticDiff: "studio:previewDiagnosticDiff",
+  confirmApplyDiagnosticFix: "studio:confirmApplyDiagnosticFix",
+  cancelDiagnosticDiff: "studio:cancelDiagnosticDiff",
   loadPastedHtml: "studio:loadPastedHtml",
   closeSession: "studio:closeSession",
   previewSeek: "studio:previewSeek",
@@ -75,6 +81,93 @@ export interface AssetTreeNode {
   children?: AssetTreeNode[];
 }
 
+export type DiagnosticCategory =
+  | "PERSISTENT"
+  | "TRANSIENT"
+  | "TIMELINE_CONTROLLED"
+  | "MEDIA"
+  | "WARNING_AMBIGUOUS";
+
+export type DiagnosticConfidence = "high" | "medium" | "low";
+
+export type DiagnosticSeverity = "info" | "warning" | "error";
+
+export interface DiagnosticSourceLocation {
+  file: string;
+  line: number;
+  column?: number;
+  snippet?: string;
+}
+
+export interface DiagnosticCodeDiffPreview {
+  proposalId: string;
+  title: string;
+  targetFile: string;
+  expectedBeforeSha256: string;
+  beforeSnippet: string;
+  afterSnippet: string;
+  diffText: string;
+}
+
+export interface CompositionDiagnostic {
+  id: string;
+  ruleId: string;
+  category: DiagnosticCategory;
+  elementIdentifier: string;
+  inspectSelector: string | null;
+  sourceLocation: DiagnosticSourceLocation | null;
+  reason: string;
+  confidence: DiagnosticConfidence;
+  severity: DiagnosticSeverity;
+  evidence: string[];
+  canAutoFix: boolean;
+  noAutoFixReason: string | null;
+  fixCandidateAvailable: boolean;
+}
+
+export interface CompositionAnalysisSummary {
+  total: number;
+  countsByCategory: Record<DiagnosticCategory, number>;
+  blockerCount: number;
+  warningCount: number;
+  autoFixableCount: number;
+}
+
+export interface CompositionAnalysisReport {
+  analyzedAtIso: string;
+  entryFile: string;
+  analyzedFiles: string[];
+  timelineContract: {
+    hasMainTimeline: boolean;
+    timelineKeys: string[];
+    pausedLikely: boolean | null;
+    hasCallbacks: boolean;
+    hasLateRegistration: boolean;
+    hasIifeTimeline: boolean;
+    hasCachedReference: boolean;
+    hasDynamicExpressions: boolean;
+  };
+  summary: CompositionAnalysisSummary;
+  diagnostics: CompositionDiagnostic[];
+}
+
+export interface InspectElementResult {
+  found: boolean;
+  selector: string;
+  tagName?: string;
+  rect?: { x: number; y: number; width: number; height: number };
+  computedDisplay?: string;
+  computedOpacity?: string;
+}
+
+export interface ApplyDiagnosticFixResult {
+  ok: boolean;
+  error?: string;
+  modifiedFile?: string;
+  session?: PreviewSessionInfo;
+  preflight?: PreflightResult;
+}
+
 export interface ImportProjectPromptResult {
   canceled: boolean;
   needsEntrySelection?: boolean;
@@ -85,6 +178,7 @@ export interface ImportProjectPromptResult {
   session?: PreviewSessionInfo;
   preflight?: PreflightResult;
   assetTree?: AssetTreeNode[];
+  analysis?: CompositionAnalysisReport;
   error?: string;
 }
 
@@ -107,6 +201,7 @@ export interface PreviewSessionInfo {
   importKind?: "html" | "paste" | "folder" | "zip";
   sourceDigestSha256?: string | null;
   sourceFileCount?: number;
+  workingCopyModified?: boolean;
   width: number | null;
   height: number | null;
   durationSec: number | null;
@@ -114,6 +209,7 @@ export interface PreviewSessionInfo {
   totalFrames: number | null;
   localAssets: string[];
   assetTree: AssetTreeNode[];
+  analysis?: CompositionAnalysisReport;
   markersSec: number[];
   preflight: PreflightResult;
 }

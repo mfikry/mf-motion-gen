@@ -8,6 +8,12 @@ const CHANNELS = {
   confirmImportEntry: "studio:confirmImportEntry",
   cancelPendingImport: "studio:cancelPendingImport",
   refreshAssetTree: "studio:refreshAssetTree",
+  runStaticAnalysis: "studio:runStaticAnalysis",
+  inspectElement: "studio:inspectElement",
+  clearInspectOverlay: "studio:clearInspectOverlay",
+  previewDiagnosticDiff: "studio:previewDiagnosticDiff",
+  confirmApplyDiagnosticFix: "studio:confirmApplyDiagnosticFix",
+  cancelDiagnosticDiff: "studio:cancelDiagnosticDiff",
   loadPastedHtml: "studio:loadPastedHtml",
   closeSession: "studio:closeSession",
   previewSeek: "studio:previewSeek",
@@ -40,6 +46,18 @@ contextBridge.exposeInMainWorld("mfStudio", {
     ipcRenderer.invoke(CHANNELS.cancelPendingImport, { pendingImportId }),
   refreshAssetTree: (sessionId: string) =>
     ipcRenderer.invoke(CHANNELS.refreshAssetTree, { sessionId }),
+  runStaticAnalysis: (sessionId: string) =>
+    ipcRenderer.invoke(CHANNELS.runStaticAnalysis, { sessionId }),
+  inspectDiagnosticElement: (sessionId: string, selector: string) =>
+    ipcRenderer.invoke(CHANNELS.inspectElement, { sessionId, selector }),
+  clearInspectOverlay: (sessionId: string) =>
+    ipcRenderer.invoke(CHANNELS.clearInspectOverlay, { sessionId }),
+  previewDiagnosticDiff: (sessionId: string, diagnosticId: string) =>
+    ipcRenderer.invoke(CHANNELS.previewDiagnosticDiff, { sessionId, diagnosticId }),
+  confirmApplyDiagnosticFix: (sessionId: string, proposalId: string) =>
+    ipcRenderer.invoke(CHANNELS.confirmApplyDiagnosticFix, { sessionId, proposalId }),
+  cancelDiagnosticDiff: (sessionId: string) =>
+    ipcRenderer.invoke(CHANNELS.cancelDiagnosticDiff, { sessionId }),
   loadPastedHtml: (html: string, title?: string) =>
     ipcRenderer.invoke(CHANNELS.loadPastedHtml, { html, title }),
   closeSession: (sessionId: string) =>

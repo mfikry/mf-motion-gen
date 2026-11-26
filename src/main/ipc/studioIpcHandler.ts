@@ -5,9 +5,13 @@ import path from "node:path";
 import { BrowserWindow, dialog, ipcMain, shell } from "electron";
 import {
   IPC_CHANNELS,
+  type ApplyDiagnosticFixResult,
   type ChooseExportPathPayload,
   type ChooseExportPathResult,
+  type CompositionAnalysisReport,
+  type DiagnosticCodeDiffPreview,
   type ImportProjectPromptResult,
+  type InspectElementResult,
   type LoadPastedHtmlPayload,
   type PreviewBounds,
   type PreviewSeekPayload,
@@ -249,7 +253,13 @@ export function registerStudioIpcHandlers(
     if (res.ok) {
       return { canceled: false, ok: true, session: res.session };
     }
-    return { canceled: false, ok: false, preflight: res.preflight, assetTree: res.assetTree };
+    return {
+      canceled: false,
+      ok: false,
+      preflight: res.preflight,
+      assetTree: res.assetTree,
+      analysis: res.analysis,
+    };
   }
 
   async function importProjectFromFolder(folderDir: string): Promise<ImportProjectPromptResult> {
@@ -447,6 +457,74 @@ export function registerStudioIpcHandlers(
     const sessionId = assertNonEmptyString(payload?.sessionId, "sessionId");
     return previewManager.refreshSessionAssets(sessionId);
   });
+
+  ipcMain.handle(
+    IPC_CHANNELS.runStaticAnalysis,
+    async (event, payload: SessionIdPayload): Promise<CompositionAnalysisReport> => {
+      assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+      const sessionId = assertNonEmptyString(payload?.sessionId, "sessionId");
+      return previewManager.runStaticAnalysis(sessionId);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.inspectElement,
+    async (
+      event,
+      payload: { sessionId?: string; selector?: string }
+    ): Promise<InspectElementResult> => {
+      assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+      const sessionId = assertNonEmptyString(payload?.sessionId, "sessionId");
+      const selector = assertNonEmptyString(payload?.selector, "selector");
+      return previewManager.inspectElement(sessionId, selector);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.clearInspectOverlay,
+    async (event, payload: SessionIdPayload): Promise<{ ok: boolean }> => {
+      assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+      const sessionId = assertNonEmptyString(payload?.sessionId, "sessionId");
+      return previewManager.clearInspectOverlay(sessionId);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.previewDiagnosticDiff,
+    async (
+      event,
+      payload: { sessionId?: string; diagnosticId?: string }
+    ): Promise<DiagnosticCodeDiffPreview> => {
+      assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+      const sessionId = assertNonEmptyString(payload?.sessionId, "sessionId");
+      const diagnosticId = assertNonEmptyString(payload?.diagnosticId, "diagnosticId");
+      return previewManager.previewDiagnosticDiff(sessionId, diagnosticId);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.confirmApplyDiagnosticFix,
+    async (
+      event,
+      payload: { sessionId?: string; proposalId?: string }
+    ): Promise<ApplyDiagnosticFixResult> => {
+      assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+      const sessionId = assertNonEmptyString(payload?.sessionId, "sessionId");
+      const proposalId = assertNonEmptyString(payload?.proposalId, "proposalId");
+      return previewManager.confirmApplyDiagnosticFix(sessionId, proposalId);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.cancelDiagnosticDiff,
+    async (event, payload: SessionIdPayload): Promise<{ ok: boolean }> => {
+      assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+      if (payload?.sessionId) {
+        await previewManager.clearInspectOverlay(payload.sessionId);
+      }
+      return { ok: true };
+    }
+  );
 
   ipcMain.handle(IPC_CHANNELS.loadPastedHtml, async (event, payload) => {
     assertAuthorizedStudioSender(event, studioContents, studioOrigin);

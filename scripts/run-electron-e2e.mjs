@@ -10,6 +10,7 @@ const targetMap = {
   sprint2: "sprint2PreviewVerification.mjs",
   sprint3: "sprint3WorkbenchVerification.mjs",
   sprint4: "sprint4ImportAndAssetTreeVerification.mjs",
+  sprint5: "sprint5StaticAnalyzerAndDiffVerification.mjs",
 };
 const target = targetMap[process.argv[2]] || "sprint1Verification.mjs";
 const electronExe = path.join(repoRoot, "node_modules", "electron", "dist", "electron.exe");

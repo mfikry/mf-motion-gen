@@ -9,9 +9,15 @@ import {
 } from "../shared/frameMath.js";
 import type { FpsFraction } from "../shared/renderContracts.js";
 import type {
+  ApplyDiagnosticFixResult,
   AssetTreeNode,
   ChooseExportPathResult,
+  CompositionAnalysisReport,
+  CompositionDiagnostic,
+  DiagnosticCategory,
+  DiagnosticCodeDiffPreview,
   ImportProjectPromptResult,
+  InspectElementResult,
   PreviewSessionInfo,
   PreviewViewportState,
   RuntimeInfoSnapshot,
@@ -20,13 +26,19 @@ import type {
 
 interface StudioBridge {
   getRuntimeInfo(): Promise<RuntimeInfoSnapshot>;
-  openCompositionDialog(): Promise<{ canceled: boolean; ok?: boolean; session?: PreviewSessionInfo; preflight?: any; assetTree?: AssetTreeNode[] }>;
+  openCompositionDialog(): Promise<{ canceled: boolean; ok?: boolean; session?: PreviewSessionInfo; preflight?: any; assetTree?: AssetTreeNode[]; analysis?: CompositionAnalysisReport }>;
   openFolderDialog(): Promise<ImportProjectPromptResult>;
   openZipDialog(): Promise<ImportProjectPromptResult>;
   confirmImportEntry(pendingImportId: string, entryFile: string): Promise<ImportProjectPromptResult>;
   cancelPendingImport(pendingImportId: string): Promise<{ ok: boolean }>;
-  refreshAssetTree(sessionId: string): Promise<{ preflight: any; assetTree: AssetTreeNode[]; localAssets: string[] }>;
-  loadPastedHtml(html: string, title?: string): Promise<{ ok: boolean; session?: PreviewSessionInfo; preflight?: any }>;
+  refreshAssetTree(sessionId: string): Promise<{ preflight: any; assetTree: AssetTreeNode[]; localAssets: string[]; analysis: CompositionAnalysisReport }>;
+  runStaticAnalysis(sessionId: string): Promise<CompositionAnalysisReport>;
+  inspectDiagnosticElement(sessionId: string, selector: string): Promise<InspectElementResult>;
+  clearInspectOverlay(sessionId: string): Promise<{ ok: boolean }>;
+  previewDiagnosticDiff(sessionId: string, diagnosticId: string): Promise<DiagnosticCodeDiffPreview>;
+  confirmApplyDiagnosticFix(sessionId: string, proposalId: string): Promise<ApplyDiagnosticFixResult>;
+  cancelDiagnosticDiff(sessionId: string): Promise<{ ok: boolean }>;
+  loadPastedHtml(html: string, title?: string): Promise<{ ok: boolean; session?: PreviewSessionInfo; preflight?: any; analysis?: CompositionAnalysisReport }>;
   closeSession(sessionId: string): Promise<{ ok: boolean }>;
   setPreviewViewport(payload: {
     sessionId: string | null;
@@ -100,6 +112,34 @@ const btnRefreshAssets = el<HTMLButtonElement>("btnRefreshAssets");
 const inspPreflightStatus = el("inspPreflightStatus");
 const listAssets = el("listAssets");
 const listPreflightIssues = el("listPreflightIssues");
+const inspDiagTotal = el("inspDiagTotal");
+const btnRunAnalysis = el<HTMLButtonElement>("btnRunAnalysis");
+const diagFilterButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-diag-cat]"));
+const cntCatALL = el("cntCatALL");
+const cntCatPERSISTENT = el("cntCatPERSISTENT");
+const cntCatTRANSIENT = el("cntCatTRANSIENT");
+const cntCatTIMELINE_CONTROLLED = el("cntCatTIMELINE_CONTROLLED");
+const cntCatMEDIA = el("cntCatMEDIA");
+const cntCatWARNING_AMBIGUOUS = el("cntCatWARNING_AMBIGUOUS");
+const listDiagnostics = el("listDiagnostics");
+const diagDetailBox = el("diagDetailBox");
+const diagDetailTarget = el("diagDetailTarget");
+const diagDetailLoc = el("diagDetailLoc");
+const diagDetailConf = el("diagDetailConf");
+const diagDetailReason = el("diagDetailReason");
+const diagDetailEvidence = el("diagDetailEvidence");
+const diagDetailNoFixNote = el("diagDetailNoFixNote");
+const diagInspectTelemetry = el("diagInspectTelemetry");
+const btnInspectDiagTarget = el<HTMLButtonElement>("btnInspectDiagTarget");
+const btnPreviewDiagDiff = el<HTMLButtonElement>("btnPreviewDiagDiff");
+const codeDiffDrawer = el("codeDiffDrawer");
+const lblDiffTargetFile = el("lblDiffTargetFile");
+const lblDiffTitle = el("lblDiffTitle");
+const lblDiffHashNote = el("lblDiffHashNote");
+const diffLinesView = el("diffLinesView");
+const lblDiffApplyStatus = el("lblDiffApplyStatus");
+const btnCancelDiff = el<HTMLButtonElement>("btnCancelDiff");
+const btnConfirmApplyDiff = el<HTMLButtonElement>("btnConfirmApplyDiff");
 
 // CenterPanel
 const scaleButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-scale]"));
@@ -158,6 +198,10 @@ interface WorkbenchState {
   completedJobId: string | null;
   renderStartedAtMs: number | null;
   violationCount: number;
+  analysis: CompositionAnalysisReport | null;
+  activeDiagFilter: "ALL" | DiagnosticCategory;
+  selectedDiagId: string | null;
+  pendingDiff: DiagnosticCodeDiffPreview | null;
 }
 
 const state: WorkbenchState = {
@@ -175,6 +219,10 @@ const state: WorkbenchState = {
   completedJobId: null,
   renderStartedAtMs: null,
   violationCount: 0,
+  analysis: null,
+  activeDiagFilter: "ALL",
+  selectedDiagId: null,
+  pendingDiff: null,
 };
 
 let rafHandle: number | null = null;
@@ -493,6 +541,167 @@ function renderAssetTreeNodes(container: HTMLElement, nodes: AssetTreeNode[], de
   }
 }
 
+const CATEGORY_LABELS: Record<DiagnosticCategory, string> = {
+  PERSISTENT: "PERSISTENT",
+  TRANSIENT: "TRANSIENT",
+  TIMELINE_CONTROLLED: "TIMELINE-CONTROLLED",
+  MEDIA: "MEDIA",
+  WARNING_AMBIGUOUS: "WARNING / AMBIGUOUS",
+};
+
+function closeCodeDiffDrawer(): void {
+  state.pendingDiff = null;
+  codeDiffDrawer.classList.add("hidden");
+  diffLinesView.innerHTML = "";
+  lblDiffApplyStatus.textContent = "";
+}
+
+function renderSelectedDiagnosticDetail(diag: CompositionDiagnostic | null): void {
+  if (!diag) {
+    diagDetailBox.classList.add("hidden");
+    diagInspectTelemetry.textContent = "";
+    return;
+  }
+  diagDetailBox.classList.remove("hidden");
+  diagDetailTarget.textContent = diag.elementIdentifier;
+  diagDetailLoc.textContent = diag.sourceLocation
+    ? `${diag.sourceLocation.file}:${diag.sourceLocation.line}`
+    : "Unknown";
+  diagDetailConf.textContent = `${diag.confidence.toUpperCase()} · ${diag.severity.toUpperCase()}`;
+  diagDetailConf.className = `kv-val conf-${diag.confidence}`;
+  diagDetailReason.textContent = diag.reason;
+
+  diagDetailEvidence.innerHTML = "";
+  for (const ev of diag.evidence) {
+    const row = document.createElement("div");
+    row.textContent = `• ${ev}`;
+    diagDetailEvidence.appendChild(row);
+  }
+
+  if (diag.canAutoFix && diag.fixCandidateAvailable) {
+    diagDetailNoFixNote.textContent = "High-confidence deterministic diff ready (Working Copy only).";
+    diagDetailNoFixNote.className = "text-ok";
+  } else {
+    diagDetailNoFixNote.textContent = diag.noAutoFixReason ?? "NO-AUTO-FIX: Manual review only.";
+    diagDetailNoFixNote.className = diag.severity === "info" ? "" : "text-warn";
+  }
+
+  diagInspectTelemetry.textContent = "";
+  const canInspectInLivePreview = Boolean(state.session && diag.inspectSelector);
+  btnInspectDiagTarget.disabled = !canInspectInLivePreview;
+  btnInspectDiagTarget.title = canInspectInLivePreview
+    ? `Highlight ${diag.inspectSelector} inside isolated preview`
+    : "Inspect requires active preview session & element selector";
+
+  const canDiff = Boolean(
+    state.session &&
+      state.session.sourceMode === "working_copy" &&
+      diag.canAutoFix &&
+      diag.fixCandidateAvailable
+  );
+  btnPreviewDiagDiff.disabled = !canDiff;
+}
+
+function renderAnalysisReport(report: CompositionAnalysisReport | null): void {
+  state.analysis = report;
+  closeCodeDiffDrawer();
+
+  if (!report) {
+    state.selectedDiagId = null;
+    inspDiagTotal.textContent = "0";
+    cntCatALL.textContent = "0";
+    cntCatPERSISTENT.textContent = "0";
+    cntCatTRANSIENT.textContent = "0";
+    cntCatTIMELINE_CONTROLLED.textContent = "0";
+    cntCatMEDIA.textContent = "0";
+    cntCatWARNING_AMBIGUOUS.textContent = "0";
+    listDiagnostics.innerHTML = "";
+    listDiagnostics.textContent = "No analysis run";
+    renderSelectedDiagnosticDetail(null);
+    return;
+  }
+
+  const c = report.summary.countsByCategory;
+  inspDiagTotal.textContent = String(report.summary.total);
+  cntCatALL.textContent = String(report.summary.total);
+  cntCatPERSISTENT.textContent = String(c.PERSISTENT ?? 0);
+  cntCatTRANSIENT.textContent = String(c.TRANSIENT ?? 0);
+  cntCatTIMELINE_CONTROLLED.textContent = String(c.TIMELINE_CONTROLLED ?? 0);
+  cntCatMEDIA.textContent = String(c.MEDIA ?? 0);
+  cntCatWARNING_AMBIGUOUS.textContent = String(c.WARNING_AMBIGUOUS ?? 0);
+
+  const visible =
+    state.activeDiagFilter === "ALL"
+      ? report.diagnostics
+      : report.diagnostics.filter((d) => d.category === state.activeDiagFilter);
+
+  if (visible.length > 0 && (!state.selectedDiagId || !visible.some((d) => d.id === state.selectedDiagId))) {
+    state.selectedDiagId = visible[0].id;
+  } else if (visible.length === 0) {
+    state.selectedDiagId = null;
+  }
+
+  listDiagnostics.innerHTML = "";
+  if (visible.length === 0) {
+    listDiagnostics.textContent = `0 items in ${state.activeDiagFilter}`;
+    renderSelectedDiagnosticDetail(null);
+    return;
+  }
+
+  for (const d of visible) {
+    const item = document.createElement("div");
+    item.className = `diag-item${d.id === state.selectedDiagId ? " selected" : ""}`;
+    item.dataset.diagId = d.id;
+
+    const head = document.createElement("div");
+    head.className = "diag-head";
+
+    const catPill = document.createElement("span");
+    catPill.className = `pill pill-${d.category}`;
+    catPill.textContent = CATEGORY_LABELS[d.category];
+
+    const badges = document.createElement("span");
+    badges.style.display = "flex";
+    badges.style.gap = "4px";
+    badges.style.alignItems = "center";
+
+    const confPill = document.createElement("span");
+    confPill.className = `conf-badge conf-${d.confidence}`;
+    confPill.textContent = d.confidence;
+    badges.appendChild(confPill);
+
+    const fixBadge = document.createElement("span");
+    fixBadge.className = "conf-badge";
+    fixBadge.textContent = d.canAutoFix ? "DIFF READY" : "NO-AUTO-FIX";
+    fixBadge.style.color = d.canAutoFix ? "var(--accent)" : "var(--text-dim)";
+    badges.appendChild(fixBadge);
+
+    head.appendChild(catPill);
+    head.appendChild(badges);
+
+    const title = document.createElement("div");
+    title.className = "mono";
+    title.style.fontSize = "11px";
+    title.textContent = `${d.elementIdentifier}${d.sourceLocation ? ` (${d.sourceLocation.file}:${d.sourceLocation.line})` : ""}`;
+
+    item.appendChild(head);
+    item.appendChild(title);
+
+    item.addEventListener("click", () => {
+      state.selectedDiagId = d.id;
+      for (const elItem of Array.from(listDiagnostics.children)) {
+        elItem.classList.toggle("selected", (elItem as HTMLElement).dataset.diagId === d.id);
+      }
+      renderSelectedDiagnosticDetail(d);
+    });
+
+    listDiagnostics.appendChild(item);
+  }
+
+  const selected = visible.find((d) => d.id === state.selectedDiagId) ?? null;
+  renderSelectedDiagnosticDetail(selected);
+}
+
 let pendingImportIdState: string | null = null;
 
 function handleImportPromptResponse(res: ImportProjectPromptResult): void {
@@ -525,14 +734,16 @@ function handleImportPromptResponse(res: ImportProjectPromptResult): void {
   applySessionToUi(
     res.ok ? res.session ?? null : null,
     res.ok ? null : res.preflight,
-    res.ok ? undefined : res.assetTree
+    res.ok ? undefined : res.assetTree,
+    res.ok ? undefined : res.analysis
   );
 }
 
 function applySessionToUi(
   session: PreviewSessionInfo | null,
   preflightOverride?: any,
-  failedAssetTree?: AssetTreeNode[]
+  failedAssetTree?: AssetTreeNode[],
+  failedAnalysis?: CompositionAnalysisReport
 ): void {
   stopPlayback();
   state.session = session;
@@ -557,12 +768,14 @@ function applySessionToUi(
     setFieldValue(inspFrames, "-");
     inspAssetCount.textContent = "0";
     btnRefreshAssets.disabled = true;
+    btnRunAnalysis.disabled = true;
     listAssets.innerHTML = "";
     if (failedAssetTree && failedAssetTree.length > 0) {
       renderAssetTreeNodes(listAssets, failedAssetTree);
     } else {
       listAssets.textContent = "No project loaded";
     }
+    renderAnalysisReport(failedAnalysis ?? null);
 
     if (preflightOverride) {
       inspPreflightStatus.textContent = "Blocked";
@@ -608,17 +821,28 @@ function applySessionToUi(
   viewportEmptyNote.classList.add("hidden");
   chipCompositionState.textContent = "Preview Isolated";
   chipCompositionState.className = "chip ok";
-  const sourceLabel = session.sourceMode === "original_file" ? "Original File" : "Working Copy";
+  const sourceLabel =
+    session.sourceMode === "original_file"
+      ? "Original File"
+      : session.workingCopyModified
+        ? "Working Copy (Modified)"
+        : "Working Copy";
   chipSourceMode.textContent = `Source: ${sourceLabel}`;
   btnCloseSession.disabled = false;
 
   setFieldValue(inspName, session.title);
   setFieldValue(inspSourceMode, sourceLabel);
   if (session.sourceDigestSha256) {
-    setFieldValue(inspDigest, `${session.sourceDigestSha256.slice(0, 12)}... (${session.sourceFileCount ?? 0}f)`);
+    const modNote = session.workingCopyModified ? " [Orig Preserved]" : "";
+    setFieldValue(
+      inspDigest,
+      `${session.sourceDigestSha256.slice(0, 12)}... (${session.sourceFileCount ?? 0}f)${modNote}`
+    );
   } else {
     setFieldValue(inspDigest, session.sourceMode === "original_file" ? "Direct File" : "Session Copy");
   }
+  btnRunAnalysis.disabled = false;
+  renderAnalysisReport(session.analysis ?? null);
   setFieldValue(inspOrigin, session.origin);
 
   if (session.width !== null && session.height !== null) {
@@ -720,7 +944,12 @@ btnTogglePaste.addEventListener("click", () => {
 btnOpenHtml.addEventListener("click", async () => {
   const res = await window.mfStudio.openCompositionDialog();
   if (!res.canceled) {
-    applySessionToUi(res.ok ? res.session ?? null : null, res.ok ? null : res.preflight, res.ok ? undefined : res.assetTree);
+    applySessionToUi(
+      res.ok ? res.session ?? null : null,
+      res.ok ? null : res.preflight,
+      res.ok ? undefined : res.assetTree,
+      res.ok ? undefined : res.analysis
+    );
   }
 });
 
@@ -754,9 +983,97 @@ btnRefreshAssets.addEventListener("click", async () => {
   state.session.preflight = refreshed.preflight;
   state.session.assetTree = refreshed.assetTree;
   state.session.localAssets = refreshed.localAssets;
+  state.session.analysis = refreshed.analysis;
   inspAssetCount.textContent = String(refreshed.localAssets.length);
   listAssets.innerHTML = "";
   renderAssetTreeNodes(listAssets, refreshed.assetTree);
+  renderAnalysisReport(refreshed.analysis);
+});
+
+btnRunAnalysis.addEventListener("click", async () => {
+  if (!state.session) return;
+  const report = await window.mfStudio.runStaticAnalysis(state.session.sessionId);
+  state.session.analysis = report;
+  renderAnalysisReport(report);
+});
+
+for (const btn of diagFilterButtons) {
+  btn.addEventListener("click", () => {
+    const cat = (btn.dataset.diagCat ?? "ALL") as "ALL" | DiagnosticCategory;
+    state.activeDiagFilter = cat;
+    for (const other of diagFilterButtons) {
+      other.classList.toggle("active", other === btn);
+    }
+    renderAnalysisReport(state.analysis);
+  });
+}
+
+btnInspectDiagTarget.addEventListener("click", async () => {
+  if (!state.session || !state.analysis || !state.selectedDiagId) return;
+  const diag = state.analysis.diagnostics.find((d) => d.id === state.selectedDiagId);
+  if (!diag?.inspectSelector) return;
+  const res = await window.mfStudio.inspectDiagnosticElement(state.session.sessionId, diag.inspectSelector);
+  if (res.found && res.rect) {
+    diagInspectTelemetry.textContent = `Highlighted <${res.tagName}> @ (${res.rect.x}, ${res.rect.y}) ${res.rect.width}x${res.rect.height} · display:${res.computedDisplay} opacity:${res.computedOpacity}`;
+    diagInspectTelemetry.className = "mono text-ok";
+  } else {
+    diagInspectTelemetry.textContent = `Element not found in live DOM: ${res.selector}`;
+    diagInspectTelemetry.className = "mono text-warn";
+  }
+});
+
+btnPreviewDiagDiff.addEventListener("click", async () => {
+  if (!state.session || !state.selectedDiagId) return;
+  try {
+    const diff = await window.mfStudio.previewDiagnosticDiff(state.session.sessionId, state.selectedDiagId);
+    state.pendingDiff = diff;
+    lblDiffTargetFile.textContent = diff.targetFile;
+    lblDiffTitle.textContent = diff.title;
+    lblDiffHashNote.textContent = `Working Copy target SHA-256: ${diff.expectedBeforeSha256.slice(0, 12)}... (Original folder untouched)`;
+    lblDiffApplyStatus.textContent = "";
+    diffLinesView.innerHTML = "";
+    for (const line of diff.diffText.split(/\r?\n/)) {
+      const lineDiv = document.createElement("div");
+      if (line.startsWith("+ ")) lineDiv.className = "diff-line-add";
+      else if (line.startsWith("- ")) lineDiv.className = "diff-line-del";
+      else if (line.startsWith("---") || line.startsWith("+++") || line.startsWith("@@")) lineDiv.className = "diff-line-hdr";
+      lineDiv.textContent = line;
+      diffLinesView.appendChild(lineDiv);
+    }
+    btnConfirmApplyDiff.disabled = false;
+    codeDiffDrawer.classList.remove("hidden");
+  } catch (err: unknown) {
+    lblDiffApplyStatus.textContent = err instanceof Error ? err.message : String(err);
+    lblDiffApplyStatus.className = "mono text-err";
+    codeDiffDrawer.classList.remove("hidden");
+    btnConfirmApplyDiff.disabled = true;
+  }
+});
+
+btnCancelDiff.addEventListener("click", async () => {
+  if (state.session) {
+    await window.mfStudio.cancelDiagnosticDiff(state.session.sessionId);
+  }
+  closeCodeDiffDrawer();
+});
+
+btnConfirmApplyDiff.addEventListener("click", async () => {
+  if (!state.session || !state.pendingDiff) return;
+  btnConfirmApplyDiff.disabled = true;
+  lblDiffApplyStatus.textContent = "Applying fix to working copy & re-analyzing...";
+  lblDiffApplyStatus.className = "mono";
+  const res = await window.mfStudio.confirmApplyDiagnosticFix(
+    state.session.sessionId,
+    state.pendingDiff.proposalId
+  );
+  if (res.ok && res.session) {
+    closeCodeDiffDrawer();
+    applySessionToUi(res.session);
+  } else {
+    lblDiffApplyStatus.textContent = res.error ?? "Failed to apply working copy fix";
+    lblDiffApplyStatus.className = "mono text-err";
+    btnConfirmApplyDiff.disabled = false;
+  }
 });
 
 btnLoadPaste.addEventListener("click", async () => {
@@ -766,7 +1083,12 @@ btnLoadPaste.addEventListener("click", async () => {
   if (res.ok && res.session) {
     pasteDrawer.classList.add("hidden");
   }
-  applySessionToUi(res.ok ? res.session ?? null : null, res.ok ? null : res.preflight);
+  applySessionToUi(
+    res.ok ? res.session ?? null : null,
+    res.ok ? null : res.preflight,
+    undefined,
+    res.ok ? undefined : res.analysis
+  );
 });
 
 btnCloseSession.addEventListener("click", async () => {
@@ -1002,5 +1324,8 @@ void window.mfStudio.getRuntimeInfo().then((info) => {
     loopEnabled: state.loopEnabled,
     snapEnabled: state.snapEnabled,
     completedJobId: state.completedJobId,
+    analysisSummary: state.analysis?.summary ?? null,
+    selectedDiagId: state.selectedDiagId,
+    activeDiagFilter: state.activeDiagFilter,
   }),
 };

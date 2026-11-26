@@ -259,6 +259,45 @@
     .pill-missing, .pill-blocked { color: var(--err); border-color: rgba(248, 113, 113, 0.45); }
     .pill-unsupported { color: var(--warn); border-color: rgba(251, 191, 36, 0.4); }
     .pill-unused { color: var(--text-dim); }
+    .pill-PERSISTENT { color: #94a3b8; border-color: rgba(148, 163, 184, 0.4); }
+    .pill-TRANSIENT { color: #c084fc; border-color: rgba(192, 132, 252, 0.45); }
+    .pill-TIMELINE_CONTROLLED { color: #38bdf8; border-color: rgba(56, 189, 248, 0.45); }
+    .pill-MEDIA { color: #4ade80; border-color: rgba(74, 222, 128, 0.45); }
+    .pill-WARNING_AMBIGUOUS { color: #f87171; border-color: rgba(248, 113, 113, 0.5); }
+    .conf-badge { font-size: 9px; padding: 1px 4px; border-radius: 3px; border: 1px solid var(--border); text-transform: uppercase; }
+    .conf-high { color: var(--ok); }
+    .conf-medium { color: var(--warn); }
+    .conf-low { color: var(--err); }
+    .filter-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+    .filter-btn { padding: 2px 6px; font-size: 10px; border-radius: 4px; }
+    .diag-item {
+      padding: 5px 6px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .diag-item:hover { background: rgba(56, 189, 248, 0.08); }
+    .diag-item.selected { background: rgba(2, 132, 199, 0.18); border-color: var(--accent); }
+    .diag-head { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+    .diff-pre {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 6px;
+      font-family: Consolas, monospace;
+      font-size: 10px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 150px;
+      overflow-y: auto;
+      user-select: text;
+    }
+    .diff-line-add { color: var(--ok); }
+    .diff-line-del { color: var(--err); }
+    .diff-line-hdr { color: var(--accent); }
 
     /* 5. StatusBar */
     #statusBar {
@@ -328,8 +367,52 @@
       <section class="card">
         <h3>Local Asset Tree <span id="inspAssetCount">0</span> <button id="btnRefreshAssets" style="padding:2px 6px;font-size:10px;" disabled>Refresh</button></h3>
         <div class="kv"><span class="kv-label">Preflight</span><span id="inspPreflightStatus" class="kv-val">-</span></div>
-        <div id="listAssets" class="list-box mono" style="max-height:190px;margin-bottom:6px;">No project loaded</div>
+        <div id="listAssets" class="list-box mono" style="max-height:150px;margin-bottom:6px;">No project loaded</div>
         <div id="listPreflightIssues" class="list-box mono">No preflight blockers</div>
+      </section>
+
+      <section id="analyzerCard" class="card">
+        <h3>
+          Smart Static Analyzer
+          <span style="display:flex;gap:4px;align-items:center;">
+            <span id="inspDiagTotal" class="mono">0</span>
+            <button id="btnRunAnalysis" style="padding:2px 6px;font-size:10px;" disabled>Re-Analyze</button>
+          </span>
+        </h3>
+        <div id="diagFilterRow" class="filter-row">
+          <button class="filter-btn active" data-diag-cat="ALL">ALL (<span id="cntCatALL">0</span>)</button>
+          <button class="filter-btn" data-diag-cat="PERSISTENT">PERSISTENT (<span id="cntCatPERSISTENT">0</span>)</button>
+          <button class="filter-btn" data-diag-cat="TRANSIENT">TRANSIENT (<span id="cntCatTRANSIENT">0</span>)</button>
+          <button class="filter-btn" data-diag-cat="TIMELINE_CONTROLLED">TIMELINE-CONTROLLED (<span id="cntCatTIMELINE_CONTROLLED">0</span>)</button>
+          <button class="filter-btn" data-diag-cat="MEDIA">MEDIA (<span id="cntCatMEDIA">0</span>)</button>
+          <button class="filter-btn" data-diag-cat="WARNING_AMBIGUOUS">WARNING / AMBIGUOUS (<span id="cntCatWARNING_AMBIGUOUS">0</span>)</button>
+        </div>
+        <div id="listDiagnostics" class="list-box" style="max-height:170px;margin-bottom:6px;">No analysis run</div>
+        <div id="diagDetailBox" class="hidden" style="border-top:1px solid var(--border);padding-top:6px;display:flex;flex-direction:column;gap:4px;">
+          <div class="kv"><span class="kv-label">Target</span><span id="diagDetailTarget" class="kv-val mono">-</span></div>
+          <div class="kv"><span class="kv-label">Location</span><span id="diagDetailLoc" class="kv-val mono">-</span></div>
+          <div class="kv"><span class="kv-label">Confidence / Sev</span><span id="diagDetailConf" class="kv-val">-</span></div>
+          <div id="diagDetailReason" style="font-size:11px;color:var(--text-main);"></div>
+          <div id="diagDetailEvidence" class="list-box mono" style="max-height:80px;font-size:10px;"></div>
+          <div id="diagDetailNoFixNote" class="text-warn" style="font-size:10px;"></div>
+          <div id="diagInspectTelemetry" class="mono" style="font-size:10px;color:var(--text-muted);"></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;">
+            <button id="btnInspectDiagTarget" style="padding:3px 8px;font-size:11px;" disabled>Inspect Element</button>
+            <button id="btnPreviewDiagDiff" class="primary" style="padding:3px 8px;font-size:11px;" disabled>Inspect &amp; Diff</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="codeDiffDrawer" class="card hidden">
+        <h3>Code Diff Inspector <span id="lblDiffTargetFile" class="mono">-</span></h3>
+        <div id="lblDiffTitle" style="font-size:11px;margin-bottom:4px;color:var(--accent);"></div>
+        <div id="lblDiffHashNote" class="mono" style="font-size:10px;color:var(--text-dim);margin-bottom:4px;"></div>
+        <div id="diffLinesView" class="diff-pre"></div>
+        <div id="lblDiffApplyStatus" class="mono" style="font-size:10px;margin-top:4px;"></div>
+        <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:6px;">
+          <button id="btnCancelDiff">Cancel / Revert</button>
+          <button id="btnConfirmApplyDiff" class="primary">Confirm Apply (Working Copy)</button>
+        </div>
       </section>
     </aside>
 
