@@ -3,6 +3,11 @@ const { contextBridge, ipcRenderer } = require("electron");
 const CHANNELS = {
   getRuntimeInfo: "studio:getRuntimeInfo",
   openCompositionDialog: "studio:openCompositionDialog",
+  openFolderDialog: "studio:openFolderDialog",
+  openZipDialog: "studio:openZipDialog",
+  confirmImportEntry: "studio:confirmImportEntry",
+  cancelPendingImport: "studio:cancelPendingImport",
+  refreshAssetTree: "studio:refreshAssetTree",
   loadPastedHtml: "studio:loadPastedHtml",
   closeSession: "studio:closeSession",
   previewSeek: "studio:previewSeek",
@@ -27,6 +32,14 @@ function subscribe(channel: string, listener: (payload: unknown) => void): () =>
 contextBridge.exposeInMainWorld("mfStudio", {
   getRuntimeInfo: () => ipcRenderer.invoke(CHANNELS.getRuntimeInfo),
   openCompositionDialog: () => ipcRenderer.invoke(CHANNELS.openCompositionDialog),
+  openFolderDialog: () => ipcRenderer.invoke(CHANNELS.openFolderDialog),
+  openZipDialog: () => ipcRenderer.invoke(CHANNELS.openZipDialog),
+  confirmImportEntry: (pendingImportId: string, entryFile: string) =>
+    ipcRenderer.invoke(CHANNELS.confirmImportEntry, { pendingImportId, entryFile }),
+  cancelPendingImport: (pendingImportId: string) =>
+    ipcRenderer.invoke(CHANNELS.cancelPendingImport, { pendingImportId }),
+  refreshAssetTree: (sessionId: string) =>
+    ipcRenderer.invoke(CHANNELS.refreshAssetTree, { sessionId }),
   loadPastedHtml: (html: string, title?: string) =>
     ipcRenderer.invoke(CHANNELS.loadPastedHtml, { html, title }),
   closeSession: (sessionId: string) =>

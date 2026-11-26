@@ -7,6 +7,7 @@ import {
   IPC_CHANNELS,
   type ChooseExportPathPayload,
   type ChooseExportPathResult,
+  type ImportProjectPromptResult,
   type LoadPastedHtmlPayload,
   type PreviewBounds,
   type PreviewSeekPayload,
@@ -17,6 +18,9 @@ import {
   type ViewportScaleMode,
 } from "../../shared/previewContracts.js";
 import { PINNED_RUNTIME, type PreflightResult, type RenderJobRequest } from "../../shared/renderContracts.js";
+import { discoverHtmlCandidates, stageIsolatedFolderCopy } from "../import/projectImporter.js";
+import { extractZipSecurely } from "../import/secureZipExtractor.js";
+import { purgeSessionDirectoryAsync } from "../import/sessionFsUtils.js";
 import { PreviewContainerManager } from "../preview/previewContainerManager.js";
 import { RenderCoordinator } from "../render/renderCoordinator.js";
 
@@ -179,8 +183,21 @@ export interface StudioIpcController {
     html: string,
     title?: string
   ): Promise<Awaited<ReturnType<PreviewContainerManager["openVerifiedDirectory"]>>>;
+  importProjectFromFolder(folderDir: string): Promise<ImportProjectPromptResult>;
+  importProjectFromZip(zipFilePath: string): Promise<ImportProjectPromptResult>;
+  confirmPendingImport(pendingImportId: string, entryFile: string): Promise<ImportProjectPromptResult>;
   getCompletedOutputPath(jobId: string): string | null;
   dispose(): Promise<void>;
+}
+
+interface PendingImportEntry {
+  workingDir: string;
+  importKind: "folder" | "zip";
+  title: string;
+  candidates: string[];
+  manifestDigestSha256: string;
+  fileCount: number;
+  hashesByRelPath: Record<string, string>;
 }
 
 interface ExportTicket {
@@ -207,6 +224,107 @@ export function registerStudioIpcHandlers(
 
   const exportTickets = new Map<string, ExportTicket>();
   const completedOutputs = new Map<string, string>();
+  const pendingImports = new Map<string, PendingImportEntry>();
+
+  async function finalizePendingImport(
+    pending: PendingImportEntry,
+    selectedEntry: string
+  ): Promise<ImportProjectPromptResult> {
+    if (!pending.candidates.includes(selectedEntry)) {
+      await purgeSessionDirectoryAsync(pending.workingDir).catch(() => {});
+      throw new Error(`Invalid HTML entry candidate selected: "${selectedEntry}"`);
+    }
+
+    const res = await previewManager.openVerifiedDirectory(pending.workingDir, {
+      entryFile: selectedEntry,
+      title: `${pending.title} (${selectedEntry})`,
+      sourceMode: "working_copy",
+      importKind: pending.importKind,
+      sourceDigestSha256: pending.manifestDigestSha256,
+      sourceFileCount: pending.fileCount,
+      hashesByRelPath: pending.hashesByRelPath,
+      ownedTempDir: pending.workingDir,
+    });
+
+    if (res.ok) {
+      return { canceled: false, ok: true, session: res.session };
+    }
+    return { canceled: false, ok: false, preflight: res.preflight, assetTree: res.assetTree };
+  }
+
+  async function importProjectFromFolder(folderDir: string): Promise<ImportProjectPromptResult> {
+    const workingDir = path.join(sessionTempBase, crypto.randomUUID());
+    const staged = stageIsolatedFolderCopy(folderDir, workingDir);
+    const pending: PendingImportEntry = {
+      workingDir: staged.workingDir,
+      importKind: "folder",
+      title: path.basename(folderDir),
+      candidates: staged.htmlCandidates,
+      manifestDigestSha256: staged.manifestDigestSha256,
+      fileCount: staged.fileCount,
+      hashesByRelPath: staged.sourceSha256ByRelPath,
+    };
+
+    if (staged.htmlCandidates.length === 1) {
+      return finalizePendingImport(pending, staged.htmlCandidates[0]);
+    }
+
+    const pendingImportId = crypto.randomUUID();
+    pendingImports.set(pendingImportId, pending);
+    return {
+      canceled: false,
+      needsEntrySelection: true,
+      pendingImportId,
+      candidates: staged.htmlCandidates,
+      suggestedEntry: staged.htmlCandidates[0],
+    };
+  }
+
+  async function importProjectFromZip(zipFilePath: string): Promise<ImportProjectPromptResult> {
+    const workingDir = path.join(sessionTempBase, crypto.randomUUID());
+    const extracted = await extractZipSecurely(zipFilePath, workingDir);
+    const candidates = discoverHtmlCandidates(extracted.targetDir);
+    if (candidates.length === 0) {
+      await purgeSessionDirectoryAsync(extracted.targetDir).catch(() => {});
+      throw new Error("No .html or .htm entry composition found inside ZIP archive");
+    }
+
+    const pending: PendingImportEntry = {
+      workingDir: extracted.targetDir,
+      importKind: "zip",
+      title: path.basename(zipFilePath),
+      candidates,
+      manifestDigestSha256: extracted.manifestDigestSha256,
+      fileCount: extracted.fileCount,
+      hashesByRelPath: extracted.fileSha256ByRelPath,
+    };
+
+    if (candidates.length === 1) {
+      return finalizePendingImport(pending, candidates[0]);
+    }
+
+    const pendingImportId = crypto.randomUUID();
+    pendingImports.set(pendingImportId, pending);
+    return {
+      canceled: false,
+      needsEntrySelection: true,
+      pendingImportId,
+      candidates,
+      suggestedEntry: candidates[0],
+    };
+  }
+
+  async function confirmPendingImport(
+    pendingImportId: string,
+    entryFile: string
+  ): Promise<ImportProjectPromptResult> {
+    const pending = pendingImports.get(pendingImportId);
+    if (!pending) {
+      throw new Error(`Pending import "${pendingImportId}" not found or expired`);
+    }
+    pendingImports.delete(pendingImportId);
+    return finalizePendingImport(pending, entryFile);
+  }
 
   async function createPastedHtmlSession(
     html: string,
@@ -219,6 +337,7 @@ export function registerStudioIpcHandlers(
       entryFile: "index.html",
       title: title ?? "Pasted Composition",
       sourceMode: "working_copy",
+      importKind: "paste",
       ownedTempDir: tempDir,
     });
   }
@@ -252,8 +371,81 @@ export function registerStudioIpcHandlers(
       entryFile,
       title: entryFile,
       sourceMode: "original_file",
+      importKind: "html",
     });
     return { canceled: false as const, ...res };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.openFolderDialog, async (event): Promise<ImportProjectPromptResult> => {
+    assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+    const picked = await dialog.showOpenDialog(studioWindow, {
+      title: "Select Composition Project Folder",
+      properties: ["openDirectory"],
+    });
+    if (picked.canceled || picked.filePaths.length === 0) {
+      return { canceled: true };
+    }
+    try {
+      return await importProjectFromFolder(picked.filePaths[0]);
+    } catch (err: unknown) {
+      return {
+        canceled: false,
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.openZipDialog, async (event): Promise<ImportProjectPromptResult> => {
+    assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+    const picked = await dialog.showOpenDialog(studioWindow, {
+      title: "Import Project ZIP Archive",
+      properties: ["openFile"],
+      filters: [{ name: "ZIP Project Archives (*.zip)", extensions: ["zip"] }],
+    });
+    if (picked.canceled || picked.filePaths.length === 0) {
+      return { canceled: true };
+    }
+    try {
+      return await importProjectFromZip(picked.filePaths[0]);
+    } catch (err: unknown) {
+      return {
+        canceled: false,
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.confirmImportEntry, async (event, payload) => {
+    assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+    if (!payload || typeof payload !== "object") {
+      throw new Error("Invalid confirmImportEntry payload");
+    }
+    const p = payload as Record<string, unknown>;
+    const pendingImportId = assertNonEmptyString(p.pendingImportId, "pendingImportId");
+    const entryFile = assertNonEmptyString(p.entryFile, "entryFile");
+    return confirmPendingImport(pendingImportId, entryFile);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.cancelPendingImport, async (event, payload) => {
+    assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+    if (!payload || typeof payload !== "object") return { ok: true };
+    const p = payload as Record<string, unknown>;
+    if (typeof p.pendingImportId === "string") {
+      const pending = pendingImports.get(p.pendingImportId);
+      if (pending) {
+        pendingImports.delete(p.pendingImportId);
+        await purgeSessionDirectoryAsync(pending.workingDir).catch(() => {});
+      }
+    }
+    return { ok: true };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.refreshAssetTree, async (event, payload: SessionIdPayload) => {
+    assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+    const sessionId = assertNonEmptyString(payload?.sessionId, "sessionId");
+    return previewManager.refreshSessionAssets(sessionId);
   });
 
   ipcMain.handle(IPC_CHANNELS.loadPastedHtml, async (event, payload) => {
@@ -415,12 +607,19 @@ export function registerStudioIpcHandlers(
 
   return {
     createPastedHtmlSession,
+    importProjectFromFolder,
+    importProjectFromZip,
+    confirmPendingImport,
     getCompletedOutputPath(jobId: string) {
       return completedOutputs.get(jobId) ?? null;
     },
     async dispose() {
       exportTickets.clear();
       completedOutputs.clear();
+      for (const pending of pendingImports.values()) {
+        await purgeSessionDirectoryAsync(pending.workingDir).catch(() => {});
+      }
+      pendingImports.clear();
       for (const ch of Object.values(IPC_CHANNELS)) {
         try {
           ipcMain.removeHandler(ch);

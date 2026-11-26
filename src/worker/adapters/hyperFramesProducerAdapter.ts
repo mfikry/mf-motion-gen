@@ -21,6 +21,7 @@ import {
   type RenderJobResult,
   type RenderProgressEvent,
 } from "../../shared/renderContracts.js";
+import { purgeSessionDirectorySync } from "../../main/import/sessionFsUtils.js";
 
 export interface ProducerRenderCallbacks {
   assertWorkerJobActive: (jobId: string) => void;
@@ -84,24 +85,36 @@ function prepareExportIsolatedStage(sourceStageDir: string, entryFile: string, j
   const isolatedStageDir = path.join(os.tmpdir(), "mf-motion-gen", "export-stage", `${safeId}_${Date.now()}`);
   fs.cpSync(sourceStageDir, isolatedStageDir, { recursive: true, dereference: false });
 
-  const entryPath = path.join(isolatedStageDir, entryFile);
-  if (fs.existsSync(entryPath)) {
-    let html = fs.readFileSync(entryPath, "utf8");
-    if (!/http-equiv=["']Content-Security-Policy["']/i.test(html)) {
-      if (/<head\b[^>]*>/i.test(html)) {
-        html = html.replace(/<head\b([^>]*)>/i, `<head$1>\n  ${EXPORT_RUNTIME_CSP_META}`);
-      } else {
-        html = `${EXPORT_RUNTIME_CSP_META}\n${html}`;
+  try {
+    const entryPath = path.join(isolatedStageDir, entryFile);
+    if (fs.existsSync(entryPath)) {
+      let html = fs.readFileSync(entryPath, "utf8");
+      if (!/http-equiv=["']Content-Security-Policy["']/i.test(html)) {
+        if (/<head\b[^>]*>/i.test(html)) {
+          html = html.replace(/<head\b([^>]*)>/i, `<head$1>\n  ${EXPORT_RUNTIME_CSP_META}`);
+        } else {
+          html = `${EXPORT_RUNTIME_CSP_META}\n${html}`;
+        }
+        // Source working copy is read-only (0o444); temporarily unlock only this staged entry copy to inject CSP.
+        fs.chmodSync(entryPath, 0o666);
+        fs.writeFileSync(entryPath, html, "utf8");
+        fs.chmodSync(entryPath, 0o444);
       }
-      fs.writeFileSync(entryPath, html, "utf8");
     }
+  } catch (err) {
+    try {
+      purgeSessionDirectorySync(isolatedStageDir);
+    } catch {
+      // Best-effort cleanup on failure
+    }
+    throw err;
   }
 
   return {
     isolatedStageDir,
     cleanup: () => {
       try {
-        fs.rmSync(isolatedStageDir, { recursive: true, force: true });
+        purgeSessionDirectorySync(isolatedStageDir);
       } catch {
         // Best-effort cleanup
       }

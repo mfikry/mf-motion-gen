@@ -9,7 +9,9 @@ import {
 } from "../shared/frameMath.js";
 import type { FpsFraction } from "../shared/renderContracts.js";
 import type {
+  AssetTreeNode,
   ChooseExportPathResult,
+  ImportProjectPromptResult,
   PreviewSessionInfo,
   PreviewViewportState,
   RuntimeInfoSnapshot,
@@ -18,7 +20,12 @@ import type {
 
 interface StudioBridge {
   getRuntimeInfo(): Promise<RuntimeInfoSnapshot>;
-  openCompositionDialog(): Promise<{ canceled: boolean; ok?: boolean; session?: PreviewSessionInfo; preflight?: any }>;
+  openCompositionDialog(): Promise<{ canceled: boolean; ok?: boolean; session?: PreviewSessionInfo; preflight?: any; assetTree?: AssetTreeNode[] }>;
+  openFolderDialog(): Promise<ImportProjectPromptResult>;
+  openZipDialog(): Promise<ImportProjectPromptResult>;
+  confirmImportEntry(pendingImportId: string, entryFile: string): Promise<ImportProjectPromptResult>;
+  cancelPendingImport(pendingImportId: string): Promise<{ ok: boolean }>;
+  refreshAssetTree(sessionId: string): Promise<{ preflight: any; assetTree: AssetTreeNode[]; localAssets: string[] }>;
   loadPastedHtml(html: string, title?: string): Promise<{ ok: boolean; session?: PreviewSessionInfo; preflight?: any }>;
   closeSession(sessionId: string): Promise<{ ok: boolean }>;
   setPreviewViewport(payload: {
@@ -67,6 +74,8 @@ const el = <T extends HTMLElement>(id: string): T => document.getElementById(id)
 const chipCompositionState = el("chipCompositionState");
 const chipSourceMode = el("chipSourceMode");
 const btnOpenHtml = el<HTMLButtonElement>("btnOpenHtml");
+const btnImportFolder = el<HTMLButtonElement>("btnImportFolder");
+const btnImportZip = el<HTMLButtonElement>("btnImportZip");
 const btnTogglePaste = el<HTMLButtonElement>("btnTogglePaste");
 const btnCloseSession = el<HTMLButtonElement>("btnCloseSession");
 
@@ -74,14 +83,20 @@ const btnCloseSession = el<HTMLButtonElement>("btnCloseSession");
 const pasteDrawer = el("pasteDrawer");
 const txtPasteHtml = el<HTMLTextAreaElement>("txtPasteHtml");
 const btnLoadPaste = el<HTMLButtonElement>("btnLoadPaste");
+const entryPickerDrawer = el("entryPickerDrawer");
+const selEntryCandidate = el<HTMLSelectElement>("selEntryCandidate");
+const btnConfirmEntryPick = el<HTMLButtonElement>("btnConfirmEntryPick");
+const btnCancelEntryPick = el<HTMLButtonElement>("btnCancelEntryPick");
 const inspName = el("inspName");
 const inspSourceMode = el("inspSourceMode");
+const inspDigest = el("inspDigest");
 const inspOrigin = el("inspOrigin");
 const inspDims = el("inspDims");
 const inspFps = el("inspFps");
 const inspDuration = el("inspDuration");
 const inspFrames = el("inspFrames");
 const inspAssetCount = el("inspAssetCount");
+const btnRefreshAssets = el<HTMLButtonElement>("btnRefreshAssets");
 const inspPreflightStatus = el("inspPreflightStatus");
 const listAssets = el("listAssets");
 const listPreflightIssues = el("listPreflightIssues");
@@ -419,7 +434,106 @@ function updateExportInspectorVisibility(): void {
   syncExportReadyState();
 }
 
-function applySessionToUi(session: PreviewSessionInfo | null, preflightOverride?: any): void {
+function formatBytes(bytes?: number): string {
+  if (bytes === undefined || !Number.isFinite(bytes)) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function renderAssetTreeNodes(container: HTMLElement, nodes: AssetTreeNode[], depth = 0): void {
+  for (const node of nodes) {
+    const wrap = document.createElement("div");
+    wrap.className = "tree-node";
+
+    const row = document.createElement("div");
+    row.className = "tree-row";
+    row.style.paddingLeft = `${4 + depth * 12}px`;
+    row.title = node.diagnosticMessage ? `${node.relativePath}\n${node.diagnosticMessage}` : node.relativePath;
+
+    const label = document.createElement("span");
+    label.className = "tree-label";
+    label.textContent = node.kind === "directory" ? `▸ ${node.name}/` : node.name;
+
+    const meta = document.createElement("span");
+    meta.className = "tree-meta";
+
+    if (node.kind === "file") {
+      if (node.sizeBytes !== undefined) {
+        const sizeSpan = document.createElement("span");
+        sizeSpan.style.color = "var(--text-dim)";
+        sizeSpan.textContent = `${node.extension ? node.extension.slice(1).toUpperCase() + " " : ""}${formatBytes(node.sizeBytes)}`;
+        meta.appendChild(sizeSpan);
+      }
+      if (node.validationStatus) {
+        const pill = document.createElement("span");
+        pill.className = `pill pill-${node.validationStatus}`;
+        pill.textContent = node.validationStatus;
+        meta.appendChild(pill);
+      }
+    }
+
+    row.appendChild(label);
+    row.appendChild(meta);
+    wrap.appendChild(row);
+
+    if (node.diagnosticMessage && (node.validationStatus === "missing" || node.validationStatus === "blocked" || node.validationStatus === "unsupported")) {
+      const diag = document.createElement("div");
+      diag.className = node.validationStatus === "unsupported" ? "text-warn" : "text-err";
+      diag.style.paddingLeft = `${10 + depth * 12}px`;
+      diag.style.fontSize = "10px";
+      diag.textContent = node.diagnosticMessage;
+      wrap.appendChild(diag);
+    }
+
+    if (node.kind === "directory" && node.children && node.children.length > 0) {
+      renderAssetTreeNodes(wrap, node.children, depth + 1);
+    }
+    container.appendChild(wrap);
+  }
+}
+
+let pendingImportIdState: string | null = null;
+
+function handleImportPromptResponse(res: ImportProjectPromptResult): void {
+  if (res.canceled) return;
+
+  if (res.needsEntrySelection && res.pendingImportId && res.candidates) {
+    pendingImportIdState = res.pendingImportId;
+    selEntryCandidate.innerHTML = "";
+    for (const c of res.candidates) {
+      const opt = document.createElement("option");
+      opt.value = c;
+      opt.textContent = c;
+      if (c === res.suggestedEntry) opt.selected = true;
+      selEntryCandidate.appendChild(opt);
+    }
+    entryPickerDrawer.classList.remove("hidden");
+    return;
+  }
+
+  entryPickerDrawer.classList.add("hidden");
+  pendingImportIdState = null;
+
+  if (res.error) {
+    applySessionToUi(null, {
+      blockers: [{ code: "IMPORT_FAILED", message: res.error }],
+    });
+    return;
+  }
+
+  applySessionToUi(
+    res.ok ? res.session ?? null : null,
+    res.ok ? null : res.preflight,
+    res.ok ? undefined : res.assetTree
+  );
+}
+
+function applySessionToUi(
+  session: PreviewSessionInfo | null,
+  preflightOverride?: any,
+  failedAssetTree?: AssetTreeNode[]
+): void {
   stopPlayback();
   state.session = session;
   state.exportTicketId = undefined;
@@ -435,13 +549,20 @@ function applySessionToUi(session: PreviewSessionInfo | null, preflightOverride?
 
     setFieldValue(inspName, "-");
     setFieldValue(inspSourceMode, "-");
+    setFieldValue(inspDigest, "-");
     setFieldValue(inspOrigin, "-");
     setFieldValue(inspDims, "-");
     setFieldValue(inspFps, "-");
     setFieldValue(inspDuration, "-");
     setFieldValue(inspFrames, "-");
     inspAssetCount.textContent = "0";
-    listAssets.textContent = "No local assets verified";
+    btnRefreshAssets.disabled = true;
+    listAssets.innerHTML = "";
+    if (failedAssetTree && failedAssetTree.length > 0) {
+      renderAssetTreeNodes(listAssets, failedAssetTree);
+    } else {
+      listAssets.textContent = "No project loaded";
+    }
 
     if (preflightOverride) {
       inspPreflightStatus.textContent = "Blocked";
@@ -493,6 +614,11 @@ function applySessionToUi(session: PreviewSessionInfo | null, preflightOverride?
 
   setFieldValue(inspName, session.title);
   setFieldValue(inspSourceMode, sourceLabel);
+  if (session.sourceDigestSha256) {
+    setFieldValue(inspDigest, `${session.sourceDigestSha256.slice(0, 12)}... (${session.sourceFileCount ?? 0}f)`);
+  } else {
+    setFieldValue(inspDigest, session.sourceMode === "original_file" ? "Direct File" : "Session Copy");
+  }
   setFieldValue(inspOrigin, session.origin);
 
   if (session.width !== null && session.height !== null) {
@@ -514,8 +640,11 @@ function applySessionToUi(session: PreviewSessionInfo | null, preflightOverride?
   setFieldValue(inspFrames, frameInfo.text, frameInfo.isUnknown);
 
   inspAssetCount.textContent = String(session.localAssets.length);
+  btnRefreshAssets.disabled = false;
   listAssets.innerHTML = "";
-  if (session.localAssets.length === 0) {
+  if (session.assetTree && session.assetTree.length > 0) {
+    renderAssetTreeNodes(listAssets, session.assetTree);
+  } else if (session.localAssets.length === 0) {
     listAssets.textContent = "No external/local asset dependencies";
   } else {
     for (const rel of session.localAssets) {
@@ -591,8 +720,43 @@ btnTogglePaste.addEventListener("click", () => {
 btnOpenHtml.addEventListener("click", async () => {
   const res = await window.mfStudio.openCompositionDialog();
   if (!res.canceled) {
-    applySessionToUi(res.ok ? res.session ?? null : null, res.ok ? null : res.preflight);
+    applySessionToUi(res.ok ? res.session ?? null : null, res.ok ? null : res.preflight, res.ok ? undefined : res.assetTree);
   }
+});
+
+btnImportFolder.addEventListener("click", async () => {
+  const res = await window.mfStudio.openFolderDialog();
+  handleImportPromptResponse(res);
+});
+
+btnImportZip.addEventListener("click", async () => {
+  const res = await window.mfStudio.openZipDialog();
+  handleImportPromptResponse(res);
+});
+
+btnConfirmEntryPick.addEventListener("click", async () => {
+  if (!pendingImportIdState || !selEntryCandidate.value) return;
+  const res = await window.mfStudio.confirmImportEntry(pendingImportIdState, selEntryCandidate.value);
+  handleImportPromptResponse(res);
+});
+
+btnCancelEntryPick.addEventListener("click", async () => {
+  if (pendingImportIdState) {
+    await window.mfStudio.cancelPendingImport(pendingImportIdState);
+  }
+  pendingImportIdState = null;
+  entryPickerDrawer.classList.add("hidden");
+});
+
+btnRefreshAssets.addEventListener("click", async () => {
+  if (!state.session) return;
+  const refreshed = await window.mfStudio.refreshAssetTree(state.session.sessionId);
+  state.session.preflight = refreshed.preflight;
+  state.session.assetTree = refreshed.assetTree;
+  state.session.localAssets = refreshed.localAssets;
+  inspAssetCount.textContent = String(refreshed.localAssets.length);
+  listAssets.innerHTML = "";
+  renderAssetTreeNodes(listAssets, refreshed.assetTree);
 });
 
 btnLoadPaste.addEventListener("click", async () => {

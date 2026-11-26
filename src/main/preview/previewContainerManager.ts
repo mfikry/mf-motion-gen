@@ -1,9 +1,9 @@
 import fs from "node:fs";
-import { promises as fsPromises } from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { BrowserWindow, WebContentsView, session } from "electron";
 import type {
+  AssetTreeNode,
   CompositionSourceMode,
   PreviewBounds,
   PreviewSessionInfo,
@@ -14,6 +14,8 @@ import type {
 } from "../../shared/previewContracts.js";
 import { computeTotalFrames, parseFpsValue } from "../../shared/frameMath.js";
 import type { FpsFraction, PreflightResult } from "../../shared/renderContracts.js";
+import { buildLocalAssetTree } from "../import/projectImporter.js";
+import { purgeSessionDirectoryAsync } from "../import/sessionFsUtils.js";
 import { setupAssetProtocolHandler } from "../security/assetProtocolHandler.js";
 import { registerCentralizedNetworkPolicy } from "../security/networkPolicyManager.js";
 import { validateCompositionPreflight } from "../validation/hostPreflightValidator.js";
@@ -26,12 +28,17 @@ export interface ManagedPreviewSession {
   entryUrl: string;
   title: string;
   sourceMode: CompositionSourceMode;
+  importKind: "html" | "paste" | "folder" | "zip";
+  sourceDigestSha256: string | null;
+  sourceFileCount: number;
+  hashesByRelPath?: Record<string, string>;
   width: number | null;
   height: number | null;
   durationSec: number | null;
   fps: FpsFraction | null;
   totalFrames: number | null;
   localAssets: string[];
+  assetTree: AssetTreeNode[];
   markersSec: number[];
   ownedTempDir: string | null;
   previewSession: Electron.Session;
@@ -169,18 +176,30 @@ export class PreviewContainerManager {
       entryFile?: string;
       title?: string;
       sourceMode?: CompositionSourceMode;
+      importKind?: "html" | "paste" | "folder" | "zip";
+      sourceDigestSha256?: string | null;
+      sourceFileCount?: number;
+      hashesByRelPath?: Record<string, string>;
       ownedTempDir?: string | null;
     } = {}
-  ): Promise<{ ok: true; session: PreviewSessionInfo } | { ok: false; preflight: PreflightResult }> {
+  ): Promise<{ ok: true; session: PreviewSessionInfo } | { ok: false; preflight: PreflightResult; assetTree?: AssetTreeNode[] }> {
     const entryFile = options.entryFile ?? "index.html";
     const sourceMode: CompositionSourceMode =
       options.sourceMode ?? (options.ownedTempDir ? "working_copy" : "original_file");
     const preflight = validateCompositionPreflight(rawStageDir, { entryFile });
     if (!preflight.ok || !preflight.entryPath) {
-      if (options.ownedTempDir) {
-        await fsPromises.rm(options.ownedTempDir, { recursive: true, force: true }).catch(() => {});
+      let failedTree: AssetTreeNode[] | undefined;
+      if (fs.existsSync(rawStageDir)) {
+        try {
+          failedTree = buildLocalAssetTree(rawStageDir, entryFile, preflight, options.hashesByRelPath);
+        } catch {
+          failedTree = undefined;
+        }
       }
-      return { ok: false, preflight };
+      if (options.ownedTempDir) {
+        await purgeSessionDirectoryAsync(options.ownedTempDir).catch(() => {});
+      }
+      return { ok: false, preflight, assetTree: failedTree };
     }
 
     await this.disposeActiveSession();
@@ -257,6 +276,12 @@ export class PreviewContainerManager {
     const localAssets = preflight.checkedLocalAssets.map((absPath) =>
       path.relative(preflight.stageDir, absPath).replace(/\\/g, "/")
     );
+    const assetTree = buildLocalAssetTree(
+      preflight.stageDir,
+      entryFile,
+      preflight,
+      options.hashesByRelPath
+    );
 
     const managed: ManagedPreviewSession = {
       sessionId,
@@ -266,12 +291,17 @@ export class PreviewContainerManager {
       entryUrl,
       title: options.title ?? path.basename(preflight.stageDir),
       sourceMode,
+      importKind: options.importKind ?? (sourceMode === "original_file" ? "html" : "paste"),
+      sourceDigestSha256: options.sourceDigestSha256 ?? null,
+      sourceFileCount: options.sourceFileCount ?? localAssets.length + 1,
+      hashesByRelPath: options.hashesByRelPath,
       width: meta.width,
       height: meta.height,
       durationSec: meta.durationSec,
       fps: meta.fps,
       totalFrames: computeTotalFrames(meta.durationSec, meta.fps),
       localAssets,
+      assetTree,
       markersSec: [],
       ownedTempDir: options.ownedTempDir ?? null,
       previewSession,
@@ -313,16 +343,40 @@ export class PreviewContainerManager {
         entryFile: managed.entryFile,
         title: managed.title,
         sourceMode: managed.sourceMode,
+        importKind: managed.importKind,
+        sourceDigestSha256: managed.sourceDigestSha256,
+        sourceFileCount: managed.sourceFileCount,
         width: managed.width,
         height: managed.height,
         durationSec: managed.durationSec,
         fps: managed.fps,
         totalFrames: managed.totalFrames,
         localAssets: managed.localAssets,
+        assetTree: managed.assetTree,
         markersSec: managed.markersSec,
         preflight: managed.preflight,
       },
     };
+  }
+
+  refreshSessionAssets(sessionId: string): {
+    preflight: PreflightResult;
+    assetTree: AssetTreeNode[];
+    localAssets: string[];
+  } {
+    const s = this.getSession(sessionId);
+    if (!s) {
+      throw new Error(`No active preview session "${sessionId}"`);
+    }
+    const preflight = validateCompositionPreflight(s.stageDir, { entryFile: s.entryFile });
+    const assetTree = buildLocalAssetTree(s.stageDir, s.entryFile, preflight, s.hashesByRelPath);
+    const localAssets = preflight.checkedLocalAssets.map((absPath) =>
+      path.relative(preflight.stageDir, absPath).replace(/\\/g, "/")
+    );
+    s.preflight = preflight;
+    s.assetTree = assetTree;
+    s.localAssets = localAssets;
+    return { preflight, assetTree, localAssets };
   }
 
   async seekPreview(sessionId: string, timeSec: number): Promise<PreviewTimelineState> {
@@ -438,7 +492,7 @@ export class PreviewContainerManager {
     }
 
     if (current.ownedTempDir) {
-      await fsPromises.rm(current.ownedTempDir, { recursive: true, force: true }).catch(() => {});
+      await purgeSessionDirectoryAsync(current.ownedTempDir).catch(() => {});
     }
   }
 }

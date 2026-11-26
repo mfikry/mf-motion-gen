@@ -234,6 +234,31 @@
     .text-warn { color: var(--warn); }
     .text-err { color: var(--err); }
     .hidden { display: none !important; }
+    .tree-node { display: flex; flex-direction: column; gap: 2px; }
+    .tree-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+    .tree-row:hover { background: rgba(56, 189, 248, 0.08); }
+    .tree-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tree-meta { display: flex; align-items: center; gap: 4px; flex-shrink: 0; font-size: 10px; }
+    .pill {
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      border: 1px solid var(--border);
+    }
+    .pill-entry { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    .pill-verified { color: var(--ok); border-color: rgba(74, 222, 128, 0.35); }
+    .pill-missing, .pill-blocked { color: var(--err); border-color: rgba(248, 113, 113, 0.45); }
+    .pill-unsupported { color: var(--warn); border-color: rgba(251, 191, 36, 0.4); }
+    .pill-unused { color: var(--text-dim); }
 
     /* 5. StatusBar */
     #statusBar {
@@ -258,13 +283,15 @@
     </div>
     <div class="toolbar">
       <button id="btnOpenHtml">Open HTML...</button>
+      <button id="btnImportFolder">Import Folder...</button>
+      <button id="btnImportZip">Import ZIP...</button>
       <button id="btnTogglePaste">Paste HTML</button>
       <button id="btnCloseSession" disabled>Close Session</button>
     </div>
   </header>
 
   <div id="workbenchGrid">
-    <!-- Panel 2: LeftPanel (Paste Drawer + Composition Inspector) -->
+    <!-- Panel 2: LeftPanel (Paste Drawer + Entry Selector + Composition Inspector + Asset Tree) -->
     <aside id="leftPanel">
       <section id="pasteDrawer" class="card hidden">
         <h3>Paste HTML (Working Copy)</h3>
@@ -274,10 +301,23 @@
         </div>
       </section>
 
+      <section id="entryPickerDrawer" class="card hidden">
+        <h3>Select Entry HTML</h3>
+        <div class="field">
+          <label for="selEntryCandidate">Multiple HTML files detected in project</label>
+          <select id="selEntryCandidate"></select>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:6px;">
+          <button id="btnCancelEntryPick">Cancel</button>
+          <button id="btnConfirmEntryPick" class="primary">Open Entry</button>
+        </div>
+      </section>
+
       <section class="card">
         <h3>Composition Inspector</h3>
         <div class="kv"><span class="kv-label">Name</span><span id="inspName" class="kv-val">-</span></div>
         <div class="kv"><span class="kv-label">Source</span><span id="inspSourceMode" class="kv-val">-</span></div>
+        <div class="kv"><span class="kv-label">Source SHA-256</span><span id="inspDigest" class="kv-val mono">-</span></div>
         <div class="kv"><span class="kv-label">Origin</span><span id="inspOrigin" class="kv-val mono">-</span></div>
         <div class="kv"><span class="kv-label">Dimensions</span><span id="inspDims" class="kv-val">-</span></div>
         <div class="kv"><span class="kv-label">FPS</span><span id="inspFps" class="kv-val">-</span></div>
@@ -286,9 +326,9 @@
       </section>
 
       <section class="card">
-        <h3>Preflight & Local Assets <span id="inspAssetCount">0</span></h3>
+        <h3>Local Asset Tree <span id="inspAssetCount">0</span> <button id="btnRefreshAssets" style="padding:2px 6px;font-size:10px;" disabled>Refresh</button></h3>
         <div class="kv"><span class="kv-label">Preflight</span><span id="inspPreflightStatus" class="kv-val">-</span></div>
-        <div id="listAssets" class="list-box mono" style="margin-bottom:6px;">No local assets verified</div>
+        <div id="listAssets" class="list-box mono" style="max-height:190px;margin-bottom:6px;">No project loaded</div>
         <div id="listPreflightIssues" class="list-box mono">No preflight blockers</div>
       </section>
     </aside>

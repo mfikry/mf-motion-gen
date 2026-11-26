@@ -11,6 +11,11 @@ export const PREVIEW_SCHEME = "mf-asset" as const;
 export const IPC_CHANNELS = {
   getRuntimeInfo: "studio:getRuntimeInfo",
   openCompositionDialog: "studio:openCompositionDialog",
+  openFolderDialog: "studio:openFolderDialog",
+  openZipDialog: "studio:openZipDialog",
+  confirmImportEntry: "studio:confirmImportEntry",
+  cancelPendingImport: "studio:cancelPendingImport",
+  refreshAssetTree: "studio:refreshAssetTree",
   loadPastedHtml: "studio:loadPastedHtml",
   closeSession: "studio:closeSession",
   previewSeek: "studio:previewSeek",
@@ -49,6 +54,40 @@ export interface PreviewViewportState {
 
 export type CompositionSourceMode = "original_file" | "working_copy";
 
+export type AssetValidationState =
+  | "entry"
+  | "verified"
+  | "missing"
+  | "blocked"
+  | "unsupported"
+  | "unused";
+
+export interface AssetTreeNode {
+  name: string;
+  relativePath: string;
+  kind: "directory" | "file";
+  extension?: string;
+  mimeType?: string | null;
+  sizeBytes?: number;
+  validationStatus?: AssetValidationState;
+  diagnosticMessage?: string;
+  sha256?: string;
+  children?: AssetTreeNode[];
+}
+
+export interface ImportProjectPromptResult {
+  canceled: boolean;
+  needsEntrySelection?: boolean;
+  pendingImportId?: string;
+  candidates?: string[];
+  suggestedEntry?: string;
+  ok?: boolean;
+  session?: PreviewSessionInfo;
+  preflight?: PreflightResult;
+  assetTree?: AssetTreeNode[];
+  error?: string;
+}
+
 export interface RuntimeInfoSnapshot {
   pinnedRuntime: typeof PINNED_RUNTIME;
   electronVersion: string | null;
@@ -65,12 +104,16 @@ export interface PreviewSessionInfo {
   entryFile: string;
   title: string;
   sourceMode: CompositionSourceMode;
+  importKind?: "html" | "paste" | "folder" | "zip";
+  sourceDigestSha256?: string | null;
+  sourceFileCount?: number;
   width: number | null;
   height: number | null;
   durationSec: number | null;
   fps: FpsFraction | null;
   totalFrames: number | null;
   localAssets: string[];
+  assetTree: AssetTreeNode[];
   markersSec: number[];
   preflight: PreflightResult;
 }
