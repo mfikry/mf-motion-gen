@@ -8,7 +8,7 @@ export const PINNED_RUNTIME = {
 export const ALPHA_REFERENCE_LIMITATION_NOTE =
   "Alpha verification is strictly bounded to parity against Chromium's 8-bit PNG source (bitDepth=8); 10/12-bit MOV precision beyond 8-bit source fidelity is not claimed.";
 
-export type RenderFormat = "mp4" | "mov" | "webm";
+export type RenderFormat = "mp4" | "mov";
 export type RenderQuality = "draft" | "standard" | "high";
 export type RenderStrictness = "strict" | "best-effort";
 
@@ -68,6 +68,7 @@ export interface RenderJobRequest {
   format?: RenderFormat;
   quality?: RenderQuality;
   fps?: FpsFraction;
+  crf?: number;
   workers?: number;
   maxRenderMs?: number;
   strictness?: RenderStrictness;

@@ -5,7 +5,12 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
 
-const target = process.argv[2] === "sprint2" ? "sprint2PreviewVerification.mjs" : "sprint1Verification.mjs";
+const targetMap = {
+  sprint1: "sprint1Verification.mjs",
+  sprint2: "sprint2PreviewVerification.mjs",
+  sprint3: "sprint3WorkbenchVerification.mjs",
+};
+const target = targetMap[process.argv[2]] || "sprint1Verification.mjs";
 const electronExe = path.join(repoRoot, "node_modules", "electron", "dist", "electron.exe");
 const mainJs = path.join(repoRoot, "dist", "main", "index.js");
 const e2eScript = path.join(repoRoot, "tests", "e2e", target);

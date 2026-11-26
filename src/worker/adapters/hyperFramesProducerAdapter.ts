@@ -134,15 +134,24 @@ export class HyperFramesProducerAdapter implements IMotionProducerAdapter {
       enableBrowserPool: false,
     });
 
+    const format = request.format ?? "mp4";
+    const resolvedCrf =
+      format === "mp4" && typeof request.crf === "number" && Number.isInteger(request.crf)
+        ? request.crf
+        : undefined;
+    const resolvedProresProfile =
+      format === "mov" ? (request.proresProfile ?? "4444") : undefined;
+
     const job = createRenderJob({
       fps: request.fps ?? { num: 30, den: 1 },
       quality: request.quality ?? "standard",
-      format: request.format ?? "mp4",
+      format,
+      crf: resolvedCrf,
       workers: request.workers,
       maxRenderMs: request.maxRenderMs,
       strictness: request.strictness ?? "strict",
       entryFile,
-      proresProfile: request.proresProfile,
+      proresProfile: resolvedProresProfile,
       producerConfig: engineConfig,
     });
 

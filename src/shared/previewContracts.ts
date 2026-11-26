@@ -1,16 +1,26 @@
-import type { PreflightResult, RenderFormat, RenderQuality } from "./renderContracts.js";
+import type {
+  FpsFraction,
+  PINNED_RUNTIME,
+  PreflightResult,
+  RenderFormat,
+  RenderQuality,
+} from "./renderContracts.js";
 
 export const PREVIEW_SCHEME = "mf-asset" as const;
 
 export const IPC_CHANNELS = {
+  getRuntimeInfo: "studio:getRuntimeInfo",
   openCompositionDialog: "studio:openCompositionDialog",
   loadPastedHtml: "studio:loadPastedHtml",
   closeSession: "studio:closeSession",
   previewSeek: "studio:previewSeek",
   previewSetBounds: "studio:previewSetBounds",
+  previewSetViewport: "studio:previewSetViewport",
   previewGetTimelineInfo: "studio:previewGetTimelineInfo",
+  chooseExportPath: "studio:chooseExportPath",
   startSessionRender: "studio:startSessionRender",
   cancelSessionRender: "studio:cancelSessionRender",
+  openOutputLocation: "studio:openOutputLocation",
   eventPreviewStatus: "studio:eventPreviewStatus",
   eventSecurityViolation: "studio:eventSecurityViolation",
   eventRenderProgress: "studio:eventRenderProgress",
@@ -24,25 +34,54 @@ export interface PreviewBounds {
   height: number;
 }
 
+export type ViewportScaleMode = "fit" | "50" | "100" | "200";
+
+export interface PreviewViewportPayload {
+  sessionId: string | null;
+  mode: ViewportScaleMode;
+  panelRect: PreviewBounds;
+}
+
+export interface PreviewViewportState {
+  scaleFactor: number;
+  bounds: PreviewBounds;
+}
+
+export type CompositionSourceMode = "original_file" | "working_copy";
+
+export interface RuntimeInfoSnapshot {
+  pinnedRuntime: typeof PINNED_RUNTIME;
+  electronVersion: string | null;
+  nodeVersion: string;
+  supportedFormats: readonly RenderFormat[];
+  crfSupportedFormats: readonly RenderFormat[];
+  proresValidatedProfile: "4444";
+}
+
 export interface PreviewSessionInfo {
   sessionId: string;
   origin: string;
   entryUrl: string;
   entryFile: string;
   title: string;
-  width: number;
-  height: number;
-  durationSec: number;
-  fps: number;
+  sourceMode: CompositionSourceMode;
+  width: number | null;
+  height: number | null;
+  durationSec: number | null;
+  fps: FpsFraction | null;
+  totalFrames: number | null;
+  localAssets: string[];
+  markersSec: number[];
   preflight: PreflightResult;
 }
 
 export interface PreviewTimelineState {
   ready: boolean;
   hasTimeline: boolean;
-  durationSec: number;
+  durationSec: number | null;
   currentTimeSec: number;
   seekSupported: boolean;
+  markersSec: number[];
   warning?: string;
 }
 
@@ -55,10 +94,24 @@ export interface SecurityViolationEvent {
   timestampMs: number;
 }
 
+export interface ChooseExportPathPayload {
+  sessionId: string;
+  format: RenderFormat;
+}
+
+export interface ChooseExportPathResult {
+  canceled: boolean;
+  exportTicketId?: string;
+  displayFileName?: string;
+}
+
 export interface SessionRenderRequestPayload {
   sessionId: string;
   format: RenderFormat;
   quality: RenderQuality;
+  fps?: FpsFraction;
+  crf?: number;
+  exportTicketId?: string;
   workers?: number;
 }
 

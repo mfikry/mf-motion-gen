@@ -6,168 +6,409 @@
     http-equiv="Content-Security-Policy"
     content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'none'; frame-src 'none'; object-src 'none';"
   />
-  <title>MF Motion Gen 2.0 — Secure Preview Studio</title>
+  <title>MF Motion Gen 2.0 — Interactive Studio Workbench</title>
   <style>
+    :root {
+      --bg-app: #070a12;
+      --bg-panel: #0e1422;
+      --bg-surface: #131b2e;
+      --bg-input: #090d18;
+      --border: #1e2a44;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --accent: #38bdf8;
+      --accent-bg: #0284c7;
+      --ok: #4ade80;
+      --warn: #fbbf24;
+      --err: #f87171;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: "Segoe UI", system-ui, sans-serif;
-      background: #0b0f19;
-      color: #e2e8f0;
+      background: var(--bg-app);
+      color: var(--text-main);
       height: 100vh;
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-rows: 50px 1fr 28px;
       overflow: hidden;
+      user-select: none;
     }
-    header {
-      height: 56px;
-      padding: 0 16px;
-      border-bottom: 1px solid #1e293b;
-      background: #111827;
+
+    /* 1. TopBar */
+    #topBar {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      padding: 0 14px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
     }
-    .brand { font-weight: 700; font-size: 15px; letter-spacing: 0.02em; color: #38bdf8; }
+    .brand-group { display: flex; align-items: center; gap: 10px; }
+    .brand { font-weight: 700; font-size: 14px; letter-spacing: 0.03em; color: var(--accent); }
+    .chip {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      color: var(--text-muted);
+    }
+    .chip.ok { color: var(--ok); border-color: rgba(74, 222, 128, 0.35); }
+    .chip.err { color: var(--err); border-color: rgba(248, 113, 113, 0.35); }
     .toolbar { display: flex; align-items: center; gap: 8px; }
-    button, select {
-      background: #1e293b;
-      color: #f8fafc;
-      border: 1px solid #334155;
-      border-radius: 6px;
-      padding: 6px 12px;
-      font-size: 13px;
+
+    button, select, input[type="number"] {
+      background: var(--bg-surface);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 5px 10px;
+      font-size: 12px;
       cursor: pointer;
     }
-    button.primary { background: #0284c7; border-color: #0ea5e9; font-weight: 600; }
-    button.danger { background: #991b1b; border-color: #ef4444; }
-    button:disabled { opacity: 0.45; cursor: not-allowed; }
-    main {
-      flex: 1;
+    button:hover:not(:disabled) { border-color: #38bdf8; }
+    button.primary { background: var(--accent-bg); border-color: var(--accent); font-weight: 600; }
+    button.danger { background: #7f1d1d; border-color: #ef4444; }
+    button.active { background: #0c4a6e; border-color: var(--accent); color: #fff; }
+    button:disabled, select:disabled, input:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* Workspace 3-column grid */
+    #workbenchGrid {
       display: grid;
-      grid-template-columns: 320px 1fr;
+      grid-template-columns: 300px minmax(360px, 1fr) 310px;
       overflow: hidden;
+      min-height: 0;
     }
-    aside {
-      border-right: 1px solid #1e293b;
-      padding: 14px;
+
+    /* 2. LeftPanel & 4. RightPanel */
+    #leftPanel, #rightPanel {
+      background: var(--bg-panel);
+      padding: 10px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 10px;
       overflow-y: auto;
-      background: #0f172a;
+      min-height: 0;
     }
-    .panel {
-      background: #111827;
-      border: 1px solid #1e293b;
-      border-radius: 8px;
-      padding: 10px 12px;
+    #leftPanel { border-right: 1px solid var(--border); }
+    #rightPanel { border-left: 1px solid var(--border); }
+
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
       font-size: 12px;
     }
-    .panel h3 {
-      font-size: 11px;
+    .card h3 {
+      font-size: 10px;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #94a3b8;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
       margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
-    .meta-row { display: flex; justify-content: space-between; margin-bottom: 4px; gap: 8px; }
-    .mono { font-family: Consolas, monospace; font-size: 11px; word-break: break-all; }
-    input[type="range"] { width: 100%; margin: 6px 0; }
+    .kv {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+    .kv-label { color: var(--text-dim); flex-shrink: 0; }
+    .kv-val { color: var(--text-main); text-align: right; word-break: break-all; }
+    .mono { font-family: Consolas, monospace; font-size: 11px; }
+    .unknown { color: var(--warn); font-style: italic; }
+
     textarea {
       width: 100%;
       height: 110px;
-      background: #020617;
-      color: #cbd5e1;
-      border: 1px solid #334155;
-      border-radius: 6px;
+      background: var(--bg-input);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      border-radius: 5px;
       padding: 8px;
       font-family: Consolas, monospace;
       font-size: 11px;
       resize: vertical;
+      user-select: text;
     }
-    #viewportHost {
-      margin: 16px;
-      border: 1px dashed #334155;
-      border-radius: 8px;
-      background: #020617;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #64748b;
-      font-size: 13px;
-    }
-    .log-list {
+
+    .list-box {
       max-height: 120px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 6px;
     }
-    .badge-ok { color: #4ade80; font-weight: 600; }
-    .badge-err { color: #f87171; font-weight: 600; }
+
+    /* 3. CenterPanel (Preview + Transport) */
+    #centerPanel {
+      background: var(--bg-app);
+      display: grid;
+      grid-template-rows: 38px 1fr 94px;
+      overflow: hidden;
+      min-height: 0;
+    }
+    #viewportHeader {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .scale-group { display: flex; gap: 4px; align-items: center; }
+    .scale-btn { padding: 3px 8px; font-size: 11px; }
+
+    #viewportStage {
+      position: relative;
+      margin: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: radial-gradient(circle at center, #0e1729 0%, #050811 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      min-height: 120px;
+    }
+    #viewportEmptyNote {
+      color: var(--text-dim);
+      font-size: 12px;
+      text-align: center;
+      padding: 16px;
+    }
+
+    #timelineBar {
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+      padding: 8px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .transport-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .transport-buttons { display: flex; align-items: center; gap: 5px; }
+    .time-readout { font-family: Consolas, monospace; font-size: 12px; color: var(--accent); }
+    #rngFrameScrubber {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* Export & Progress styling */
+    .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+    .field label { font-size: 11px; color: var(--text-muted); }
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 6px 0;
+    }
+    #progressFill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #0284c7, #38bdf8);
+      transition: width 120ms linear;
+    }
+    .text-ok { color: var(--ok); }
+    .text-warn { color: var(--warn); }
+    .text-err { color: var(--err); }
+    .hidden { display: none !important; }
+
+    /* 5. StatusBar */
+    #statusBar {
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
   </style>
 </head>
 <body>
-  <header>
-    <div class="brand">MF Motion Gen 2.0 — Secure Preview</div>
+  <!-- Panel 1: TopBar -->
+  <header id="topBar">
+    <div class="brand-group">
+      <span class="brand">MF MOTION GEN 2.0</span>
+      <span id="chipCompositionState" class="chip">No Composition</span>
+      <span id="chipSourceMode" class="chip">Source: -</span>
+    </div>
     <div class="toolbar">
       <button id="btnOpenHtml">Open HTML...</button>
-      <select id="selFormat">
-        <option value="mp4">MP4 (H.264)</option>
-        <option value="mov">MOV (ProRes 4444)</option>
-      </select>
-      <select id="selQuality">
-        <option value="draft">Draft</option>
-        <option value="standard">Standard</option>
-        <option value="high">High</option>
-      </select>
-      <button id="btnRender" class="primary" disabled>Render Export</button>
-      <button id="btnCancelRender" class="danger" disabled>Cancel</button>
+      <button id="btnTogglePaste">Paste HTML</button>
+      <button id="btnCloseSession" disabled>Close Session</button>
     </div>
   </header>
-  <main>
-    <aside>
-      <div class="panel">
-        <h3>Paste Composition HTML</h3>
-        <textarea id="txtPasteHtml" placeholder="Paste offline HTML composition..."></textarea>
-        <div style="margin-top:6px;display:flex;justify-content:flex-end;">
-          <button id="btnLoadPaste">Load Pasted HTML</button>
+
+  <div id="workbenchGrid">
+    <!-- Panel 2: LeftPanel (Paste Drawer + Composition Inspector) -->
+    <aside id="leftPanel">
+      <section id="pasteDrawer" class="card hidden">
+        <h3>Paste HTML (Working Copy)</h3>
+        <textarea id="txtPasteHtml" placeholder="Paste self-contained offline HTML composition..."></textarea>
+        <div style="margin-top:6px;display:flex;justify-content:flex-end;gap:6px;">
+          <button id="btnLoadPaste" class="primary">Load Working Copy</button>
         </div>
-      </div>
+      </section>
 
-      <div class="panel">
-        <h3>Session & Preflight</h3>
-        <div class="meta-row"><span>Status</span><span id="lblStatus">No composition loaded</span></div>
-        <div class="meta-row"><span>Origin</span><span id="lblOrigin" class="mono">-</span></div>
-        <div class="meta-row"><span>Spec</span><span id="lblSpec">-</span></div>
-        <div id="preflightErrors" class="log-list"></div>
-      </div>
+      <section class="card">
+        <h3>Composition Inspector</h3>
+        <div class="kv"><span class="kv-label">Name</span><span id="inspName" class="kv-val">-</span></div>
+        <div class="kv"><span class="kv-label">Source</span><span id="inspSourceMode" class="kv-val">-</span></div>
+        <div class="kv"><span class="kv-label">Origin</span><span id="inspOrigin" class="kv-val mono">-</span></div>
+        <div class="kv"><span class="kv-label">Dimensions</span><span id="inspDims" class="kv-val">-</span></div>
+        <div class="kv"><span class="kv-label">FPS</span><span id="inspFps" class="kv-val">-</span></div>
+        <div class="kv"><span class="kv-label">Duration</span><span id="inspDuration" class="kv-val">-</span></div>
+        <div class="kv"><span class="kv-label">Total Frames</span><span id="inspFrames" class="kv-val">-</span></div>
+      </section>
 
-      <div class="panel">
-        <h3>Timeline Scrubber</h3>
-        <input id="rngTimeline" type="range" min="0" max="5" step="0.033" value="0" disabled />
-        <div class="meta-row">
-          <span id="lblTime">0.00s / 0.00s</span>
-          <span id="lblSeekMode">-</span>
-        </div>
-      </div>
-
-      <div class="panel">
-        <h3>Render Output</h3>
-        <div id="lblRenderStatus">Idle</div>
-      </div>
-
-      <div class="panel">
-        <h3>Runtime Security Log</h3>
-        <div id="securityLog" class="log-list"></div>
-      </div>
+      <section class="card">
+        <h3>Preflight & Local Assets <span id="inspAssetCount">0</span></h3>
+        <div class="kv"><span class="kv-label">Preflight</span><span id="inspPreflightStatus" class="kv-val">-</span></div>
+        <div id="listAssets" class="list-box mono" style="margin-bottom:6px;">No local assets verified</div>
+        <div id="listPreflightIssues" class="list-box mono">No preflight blockers</div>
+      </section>
     </aside>
 
-    <section id="viewportHost">
-      Isolated Preview Viewport (WebContentsView mounts here)
-    </section>
-  </main>
+    <!-- Panel 3: CenterPanel (Viewport + Transport/Timeline) -->
+    <main id="centerPanel">
+      <div id="viewportHeader">
+        <div class="scale-group">
+          <span>Scale:</span>
+          <button class="scale-btn active" data-scale="fit">Fit</button>
+          <button class="scale-btn" data-scale="50">50%</button>
+          <button class="scale-btn" data-scale="100">100%</button>
+          <button class="scale-btn" data-scale="200">200%</button>
+          <span id="lblViewportScale" class="mono" style="margin-left:6px;">-</span>
+        </div>
+        <div>
+          <span id="lblSeekContract">No Composition</span>
+        </div>
+      </div>
+
+      <section id="viewportStage">
+        <div id="viewportEmptyNote">Open an HTML composition or paste offline HTML to start isolated preview</div>
+      </section>
+
+      <section id="timelineBar">
+        <div class="transport-row">
+          <div class="transport-buttons">
+            <button id="btnFirstFrame" title="First Frame (Home)" disabled>|&lt;</button>
+            <button id="btnPrevFrame" title="Previous Frame (Left)" disabled>&lt;</button>
+            <button id="btnPlayPause" class="primary" title="Play / Pause (Space)" disabled>Play</button>
+            <button id="btnNextFrame" title="Next Frame (Right)" disabled>&gt;</button>
+            <button id="btnLastFrame" title="Last Frame (End)" disabled>&gt;|</button>
+            <button id="btnLoopToggle" class="active" title="Loop Playback" disabled>Loop: On</button>
+            <button id="btnSnapToggle" title="Snap to Markers (available only when markers exist)" disabled>Snap: No Markers</button>
+          </div>
+          <div class="time-readout">
+            <span id="lblTimecode">00:00:00:00</span> ·
+            <span id="lblFrameCounter">Frame 0 / 0</span> ·
+            <span id="lblTimeSec">0.000s</span>
+          </div>
+        </div>
+        <input id="rngFrameScrubber" type="range" min="0" max="0" step="1" value="0" disabled />
+      </section>
+    </main>
+
+    <!-- Panel 4: RightPanel (Export Inspector + Render Progress + Security Feed) -->
+    <aside id="rightPanel">
+      <section class="card">
+        <h3>Export Inspector</h3>
+        <div class="field">
+          <label for="selFormat">Format / Codec</label>
+          <select id="selFormat">
+            <option value="mp4">MP4 — H.264 (SDR)</option>
+            <option value="mov">MOV — ProRes 4444 (yuva444p12le Alpha)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="selQuality">Quality Preset</label>
+          <select id="selQuality">
+            <option value="draft">Draft</option>
+            <option value="standard" selected>Standard</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="selExportFps">Export FPS</label>
+          <select id="selExportFps" disabled>
+            <option value="">-- Select Export FPS --</option>
+          </select>
+        </div>
+
+        <div id="crfGroup" class="field">
+          <label for="inpCrf">H.264 CRF (0–51, optional)</label>
+          <input id="inpCrf" type="number" min="0" max="51" step="1" placeholder="Preset default (e.g. 18)" />
+        </div>
+
+        <div id="proresInfoBox" class="card hidden" style="padding:7px;margin-bottom:8px;background:var(--bg-input);">
+          <div class="kv" style="margin-bottom:2px;"><span class="kv-label">ProRes Profile</span><span class="kv-val mono">4444 (validated)</span></div>
+          <div style="font-size:10px;color:var(--text-dim);">Alpha validated vs Chromium 8-bit PNG source. CRF not applicable to ProRes.</div>
+        </div>
+
+        <div class="field">
+          <label>Output Destination</label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button id="btnChooseOutput" disabled>Save As...</button>
+            <span id="lblExportDest" class="mono" style="color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Default temp folder</span>
+          </div>
+        </div>
+
+        <div id="lblExportValidation" class="text-err" style="font-size:11px;min-height:14px;margin-bottom:6px;"></div>
+        <div style="display:flex;gap:6px;">
+          <button id="btnRender" class="primary" style="flex:1;" disabled>Render Export</button>
+          <button id="btnCancelRender" class="danger" disabled>Cancel</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Render Progress</h3>
+        <div class="kv"><span class="kv-label">Stage</span><span id="lblRenderStage" class="kv-val">Idle</span></div>
+        <div class="kv"><span class="kv-label">Frames</span><span id="lblRenderFrames" class="kv-val mono">-</span></div>
+        <div class="kv"><span class="kv-label">Elapsed</span><span id="lblRenderElapsed" class="kv-val mono">-</span></div>
+        <div class="progress-track"><div id="progressFill"></div></div>
+        <div id="lblRenderOutcome" class="mono" style="min-height:16px;margin-bottom:6px;">Ready</div>
+        <button id="btnOpenOutput" disabled style="width:100%;">Open Output Location</button>
+      </section>
+
+      <section class="card">
+        <h3>Runtime Security Log <span id="lblViolationCountBadge">0</span></h3>
+        <div id="securityLog" class="list-box mono">No violations detected</div>
+      </section>
+    </aside>
+  </div>
+
+  <!-- Panel 5: StatusBar -->
+  <footer id="statusBar">
+    <span id="lblRuntimeVersions" class="mono">Loading runtime versions...</span>
+    <span id="lblSecurityBoundary">Isolated WebContentsView · mf-asset:// · Offline-First</span>
+  </footer>
 
   <script type="module" src="../../dist/renderer/studioApp.js"></script>
 </body>
