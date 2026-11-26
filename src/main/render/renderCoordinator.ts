@@ -6,7 +6,11 @@ import type {
   RenderProgressEvent,
 } from "../../shared/renderContracts.js";
 import { validateCompositionPreflight } from "../validation/hostPreflightValidator.js";
-import { RenderWorkerHost, type WorkerRenderExecution } from "./renderWorkerHost.js";
+import {
+  RenderWorkerHost,
+  type WorkerDiagnosticSignal,
+  type WorkerRenderExecution,
+} from "./renderWorkerHost.js";
 
 export class RenderPreflightError extends Error {
   readonly preflight: PreflightResult;
@@ -24,6 +28,12 @@ export interface CoordinatedRenderOutcome {
   execution: WorkerRenderExecution;
 }
 
+export interface CoordinatedRenderHooks {
+  onProgress?: (event: RenderProgressEvent) => void;
+  onPreflight?: (preflight: PreflightResult) => void;
+  onDiagnostic?: (signal: WorkerDiagnosticSignal) => void;
+}
+
 /**
  * High-level Main Process coordinator coupling Host-Side Preflight validation
  * with isolated RenderWorkerHost execution.
@@ -37,11 +47,17 @@ export class RenderCoordinator {
 
   async render(
     request: RenderJobRequest,
-    onProgress?: (event: RenderProgressEvent) => void
+    onProgressOrHooks?: ((event: RenderProgressEvent) => void) | CoordinatedRenderHooks
   ): Promise<CoordinatedRenderOutcome> {
+    const hooks: CoordinatedRenderHooks =
+      typeof onProgressOrHooks === "function"
+        ? { onProgress: onProgressOrHooks }
+        : (onProgressOrHooks ?? {});
+
     const preflight = validateCompositionPreflight(request.stageDir, {
       entryFile: request.entryFile ?? "index.html",
     });
+    hooks.onPreflight?.(preflight);
 
     if (!preflight.ok) {
       throw new RenderPreflightError(preflight);
@@ -50,7 +66,8 @@ export class RenderCoordinator {
     fs.mkdirSync(path.dirname(path.resolve(request.outputPath)), { recursive: true });
     const execution = await this.host.render(
       { ...request, stageDir: preflight.stageDir },
-      onProgress
+      hooks.onProgress,
+      hooks.onDiagnostic
     );
 
     return { preflight, execution };

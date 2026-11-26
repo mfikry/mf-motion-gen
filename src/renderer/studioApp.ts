@@ -7,7 +7,18 @@ import {
   parseFpsValue,
   snapFrameToMarkers,
 } from "../shared/frameMath.js";
-import type { FpsFraction } from "../shared/renderContracts.js";
+import {
+  formatTelemetryMetric,
+  type ExportRenderLogResult,
+  type FpsFraction,
+  type RenderJobLogSummary,
+  type RenderJobResult,
+  type RenderLogEntry,
+  type RenderProgressEvent,
+  type RenderQueueItemSnapshot,
+  type RenderQueueSnapshot,
+  type RuntimeTelemetrySnapshot,
+} from "../shared/renderContracts.js";
 import type {
   ApplyDiagnosticFixResult,
   AssetTreeNode,
@@ -66,12 +77,30 @@ interface StudioBridge {
     fps?: FpsFraction;
     crf?: number;
     exportTicketId?: string;
-  }): Promise<any>;
+  }): Promise<RenderJobResult>;
   cancelSessionRender(jobId: string): Promise<{ cancelled: boolean }>;
+  getRenderQueueSnapshot(): Promise<RenderQueueSnapshot>;
+  enqueueRenderJob(payload: {
+    sessionId: string;
+    format: "mp4" | "mov";
+    quality: "draft" | "standard" | "high";
+    fps?: FpsFraction;
+    crf?: number;
+    exportTicketId?: string;
+    workers?: number;
+  }): Promise<RenderQueueItemSnapshot>;
+  cancelQueueItem(jobId: string): Promise<{ cancelled: boolean; wasActive: boolean }>;
+  clearFinishedQueueItems(): Promise<{ cleared: number }>;
+  getRenderJobLog(jobId: string): Promise<RenderJobLogSummary>;
+  exportRenderJobLog(jobId: string): Promise<ExportRenderLogResult>;
+  getRuntimeTelemetry(): Promise<RuntimeTelemetrySnapshot>;
   openOutputLocation(jobId: string): Promise<{ opened: boolean; reason?: string }>;
   onSecurityViolation(cb: (ev: any) => void): () => void;
-  onRenderProgress(cb: (ev: any) => void): () => void;
-  onRenderComplete(cb: (ev: any) => void): () => void;
+  onRenderProgress(cb: (ev: RenderProgressEvent) => void): () => void;
+  onRenderComplete(cb: (ev: RenderJobResult) => void): () => void;
+  onQueueUpdated(cb: (snapshot: RenderQueueSnapshot) => void): () => void;
+  onRuntimeTelemetry(cb: (snapshot: RuntimeTelemetrySnapshot) => void): () => void;
+  onRenderLogUpdated(cb: (payload: { jobId: string; entry: RenderLogEntry }) => void): () => void;
 }
 
 declare global {
@@ -170,18 +199,31 @@ const btnChooseOutput = el<HTMLButtonElement>("btnChooseOutput");
 const lblExportDest = el("lblExportDest");
 const lblExportValidation = el("lblExportValidation");
 const btnRender = el<HTMLButtonElement>("btnRender");
+const btnAddToQueue = el<HTMLButtonElement>("btnAddToQueue");
 const btnCancelRender = el<HTMLButtonElement>("btnCancelRender");
 const lblRenderStage = el("lblRenderStage");
 const lblRenderFrames = el("lblRenderFrames");
 const lblRenderElapsed = el("lblRenderElapsed");
+const lblRenderThroughput = el("lblRenderThroughput");
 const progressFill = el("progressFill");
 const lblRenderOutcome = el("lblRenderOutcome");
 const btnOpenOutput = el<HTMLButtonElement>("btnOpenOutput");
+const lblQueueSummaryBadge = el("lblQueueSummaryBadge");
+const btnClearCompleted = el<HTMLButtonElement>("btnClearCompleted");
+const lblQueueCountsLine = el("lblQueueCountsLine");
+const listRenderQueue = el("listRenderQueue");
+const lblLogSelectedJob = el("lblLogSelectedJob");
+const btnExportJobLog = el<HTMLButtonElement>("btnExportJobLog");
+const lblLogMetaLine = el("lblLogMetaLine");
+const lblLogTruncationWarn = el("lblLogTruncationWarn");
+const listRenderLogs = el("listRenderLogs");
+const lblLogExportStatus = el("lblLogExportStatus");
 const lblViolationCountBadge = el("lblViolationCountBadge");
 const securityLog = el("securityLog");
 
 // StatusBar
 const lblRuntimeVersions = el("lblRuntimeVersions");
+const lblStatusTelemetry = el("lblStatusTelemetry");
 
 interface WorkbenchState {
   session: PreviewSessionInfo | null;
@@ -197,11 +239,20 @@ interface WorkbenchState {
   activeJobId: string | null;
   completedJobId: string | null;
   renderStartedAtMs: number | null;
+  renderSubmitInFlight: boolean;
   violationCount: number;
   analysis: CompositionAnalysisReport | null;
   activeDiagFilter: "ALL" | DiagnosticCategory;
   selectedDiagId: string | null;
   pendingDiff: DiagnosticCodeDiffPreview | null;
+  queueSnapshot: RenderQueueSnapshot | null;
+  lastQueueVersion: number;
+  telemetry: RuntimeTelemetrySnapshot | null;
+  lastTelemetrySampledAtMs: number;
+  selectedLogJobId: string | null;
+  selectedJobLog: RenderJobLogSummary | null;
+  activeProgressByJobId: Record<string, { stage: string; framesRendered: number | null; totalFrames: number | null; progress: number }>;
+  isDisposed: boolean;
 }
 
 const state: WorkbenchState = {
@@ -218,11 +269,20 @@ const state: WorkbenchState = {
   activeJobId: null,
   completedJobId: null,
   renderStartedAtMs: null,
+  renderSubmitInFlight: false,
   violationCount: 0,
   analysis: null,
   activeDiagFilter: "ALL",
   selectedDiagId: null,
   pendingDiff: null,
+  queueSnapshot: null,
+  lastQueueVersion: -1,
+  telemetry: null,
+  lastTelemetrySampledAtMs: -1,
+  selectedLogJobId: null,
+  selectedJobLog: null,
+  activeProgressByJobId: {},
+  isDisposed: false,
 };
 
 let rafHandle: number | null = null;
@@ -450,14 +510,21 @@ function resolveSelectedExportFps(): FpsFraction | null {
 function syncExportReadyState(): void {
   if (!state.session) {
     btnRender.disabled = true;
+    btnAddToQueue.disabled = true;
     return;
   }
   const resolved = resolveSelectedExportFps();
+  const activeOrPending = Boolean(
+    state.renderSubmitInFlight ||
+      (state.queueSnapshot && (state.queueSnapshot.activeCount > 0 || state.queueSnapshot.queuedCount > 0))
+  );
   if (!resolved) {
     btnRender.disabled = true;
+    btnAddToQueue.disabled = true;
     lblExportValidation.textContent = "Select Export FPS before rendering (source FPS is Unknown).";
   } else {
-    btnRender.disabled = false;
+    btnRender.disabled = activeOrPending;
+    btnAddToQueue.disabled = false;
     if (lblExportValidation.textContent.includes("Select Export FPS")) {
       lblExportValidation.textContent = "";
     }
@@ -807,6 +874,7 @@ function applySessionToUi(
       btnSnapToggle,
       btnChooseOutput,
       btnRender,
+      btnAddToQueue,
     ]) {
       b.disabled = true;
     }
@@ -1184,14 +1252,21 @@ btnChooseOutput.addEventListener("click", async () => {
   }
 });
 
-btnRender.addEventListener("click", async () => {
-  if (!state.session) return;
+function collectValidatedExportPayload(): {
+  sessionId: string;
+  format: "mp4" | "mov";
+  quality: "draft" | "standard" | "high";
+  fps: FpsFraction;
+  crf?: number;
+  exportTicketId?: string;
+} | null {
+  if (!state.session) return null;
   lblExportValidation.textContent = "";
 
   const exportFps = resolveSelectedExportFps();
   if (!exportFps) {
     lblExportValidation.textContent = "Select Export FPS before rendering (source FPS is Unknown).";
-    return;
+    return null;
   }
 
   const format = selFormat.value as "mp4" | "mov";
@@ -1202,11 +1277,282 @@ btnRender.addEventListener("click", async () => {
     const parsedCrf = Number(inpCrf.value.trim());
     if (!Number.isInteger(parsedCrf) || parsedCrf < 0 || parsedCrf > 51) {
       lblExportValidation.textContent = "CRF must be an integer between 0 and 51.";
-      return;
+      return null;
     }
     crf = parsedCrf;
   }
 
+  const ticketId = state.exportTicketId;
+  state.exportTicketId = undefined;
+  lblExportDest.textContent = "Default temp folder";
+
+  return {
+    sessionId: state.session.sessionId,
+    format,
+    quality,
+    fps: exportFps,
+    crf,
+    exportTicketId: ticketId,
+  };
+}
+
+function getDisplayQueueStatus(status: RenderQueueItemSnapshot["status"]): string {
+  return status === "complete" ? "completed" : status;
+}
+
+function renderSelectedJobLog(): void {
+  const log = state.selectedJobLog;
+  if (!log) {
+    lblLogSelectedJob.textContent = state.selectedLogJobId ? state.selectedLogJobId.slice(-14) : "None";
+    btnExportJobLog.disabled = true;
+    lblLogMetaLine.textContent = state.selectedLogJobId
+      ? "Render log unavailable for selected job"
+      : "Select a queue job to inspect logs";
+    lblLogTruncationWarn.classList.add("hidden");
+    lblLogTruncationWarn.textContent = "";
+    listRenderLogs.innerHTML = "";
+    listRenderLogs.textContent = state.selectedLogJobId ? "Log unavailable" : "No render log selected";
+    return;
+  }
+
+  lblLogSelectedJob.textContent = log.jobId.slice(-14);
+  btnExportJobLog.disabled = false;
+  const exitText = log.workerExitCode !== null ? `exit=${log.workerExitCode}` : "exit=N/A";
+  const wStderrText = `workerStderr=${log.workerStderrStatus}`;
+  const ffStderrText = `ffmpegStderr=${log.ffmpegStderrStatus}`;
+  lblLogMetaLine.textContent = `${getDisplayQueueStatus(log.status).toUpperCase()} · ${exitText} · ${wStderrText} · ${ffStderrText}`;
+
+  if (log.truncated) {
+    lblLogTruncationWarn.textContent = `Log ring buffer truncated (${log.droppedEntryCount} older low-priority entries evicted; max ${log.maxEntriesPerJob}).`;
+    lblLogTruncationWarn.classList.remove("hidden");
+  } else {
+    lblLogTruncationWarn.classList.add("hidden");
+    lblLogTruncationWarn.textContent = "";
+  }
+
+  listRenderLogs.innerHTML = "";
+  if (log.entries.length === 0) {
+    listRenderLogs.textContent = "No log entries recorded yet";
+    return;
+  }
+
+  for (const entry of log.entries) {
+    const row = document.createElement("div");
+    row.className = `log-row log-level-${entry.level}`;
+    const timePart = entry.timestamp.slice(11, 23);
+    const stagePart = entry.stage ? `[${entry.stage}] ` : "";
+    row.textContent = `${timePart} [${entry.level.toUpperCase()}] ${entry.event} ${stagePart}- ${entry.message}`;
+    if (entry.metadata && Object.keys(entry.metadata).length > 0) {
+      const metaSpan = document.createElement("div");
+      metaSpan.style.color = "var(--text-dim)";
+      metaSpan.style.paddingLeft = "10px";
+      metaSpan.textContent = JSON.stringify(entry.metadata);
+      row.appendChild(metaSpan);
+    }
+    listRenderLogs.appendChild(row);
+  }
+}
+
+async function selectLogJob(jobId: string): Promise<void> {
+  if (state.isDisposed) return;
+  state.selectedLogJobId = jobId;
+  lblLogExportStatus.textContent = "";
+  renderQueueItemsList();
+
+  try {
+    const summary = await window.mfStudio.getRenderJobLog(jobId);
+    if (state.isDisposed || state.selectedLogJobId !== jobId) return;
+    state.selectedJobLog = summary;
+    renderSelectedJobLog();
+  } catch (err: unknown) {
+    if (state.isDisposed || state.selectedLogJobId !== jobId) return;
+    state.selectedJobLog = null;
+    renderSelectedJobLog();
+    lblLogMetaLine.textContent = `Log unavailable: ${err instanceof Error ? err.message : String(err)}`;
+  }
+}
+
+function renderQueueItemsList(): void {
+  const snap = state.queueSnapshot;
+  listRenderQueue.innerHTML = "";
+  if (!snap || snap.items.length === 0) {
+    listRenderQueue.textContent = "No queued render jobs";
+    return;
+  }
+
+  for (const item of snap.items) {
+    const card = document.createElement("div");
+    card.className = `queue-item${item.jobId === state.selectedLogJobId ? " selected" : ""}`;
+    card.dataset.jobId = item.jobId;
+
+    const topRow = document.createElement("div");
+    topRow.className = "queue-row";
+
+    const outName = item.outputPath.split(/[\\/]/).pop() || item.jobId;
+    const titleSpan = document.createElement("span");
+    titleSpan.className = "mono tree-label";
+    titleSpan.title = `${item.jobId}\n${outName}`;
+    titleSpan.textContent = `${outName}`;
+
+    const pill = document.createElement("span");
+    pill.className = `pill pill-${item.status}`;
+    pill.textContent = getDisplayQueueStatus(item.status);
+
+    topRow.appendChild(titleSpan);
+    topRow.appendChild(pill);
+    card.appendChild(topRow);
+
+    const subRow = document.createElement("div");
+    subRow.className = "queue-row";
+    subRow.style.fontSize = "10px";
+    subRow.style.color = "var(--text-muted)";
+
+    const prog = state.activeProgressByJobId[item.jobId];
+    let infoText = `${item.format.toUpperCase()} · ${item.fps.num}/${item.fps.den} fps`;
+    if (item.status === "rendering" && prog) {
+      if (prog.framesRendered !== null && prog.totalFrames !== null) {
+        infoText += ` · ${prog.framesRendered}/${prog.totalFrames}`;
+      } else {
+        infoText += ` · ${Math.round(prog.progress * 100)}%`;
+      }
+    } else if (item.status === "failed" && item.errorMessage) {
+      infoText += ` · ${item.errorMessage.slice(0, 42)}`;
+    } else if (item.status === "cancelled" && item.cancelReason) {
+      infoText += ` · ${item.cancelReason}`;
+    }
+
+    const infoSpan = document.createElement("span");
+    infoSpan.className = "mono tree-label";
+    infoSpan.textContent = infoText;
+    subRow.appendChild(infoSpan);
+
+    // Terminal items NEVER show an active Cancel button
+    if (item.status === "queued" || item.status === "rendering") {
+      const cancelBtn = document.createElement("button");
+      cancelBtn.textContent = "Cancel";
+      cancelBtn.className = "danger";
+      cancelBtn.style.padding = "1px 6px";
+      cancelBtn.style.fontSize = "10px";
+      cancelBtn.dataset.cancelJobId = item.jobId;
+      cancelBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        cancelBtn.disabled = true;
+        void window.mfStudio.cancelQueueItem(item.jobId).catch((err) => {
+          lblRenderOutcome.textContent = err instanceof Error ? err.message : String(err);
+          lblRenderOutcome.className = "mono text-err";
+        });
+      });
+      subRow.appendChild(cancelBtn);
+    }
+
+    card.appendChild(subRow);
+    card.addEventListener("click", () => {
+      void selectLogJob(item.jobId);
+    });
+    listRenderQueue.appendChild(card);
+  }
+}
+
+function applyRenderQueueSnapshot(snapshot: RenderQueueSnapshot): void {
+  if (state.isDisposed) return;
+  if (typeof snapshot.version === "number" && snapshot.version < state.lastQueueVersion) {
+    return; // Reject out-of-order / stale queue snapshot
+  }
+  state.lastQueueVersion = snapshot.version ?? state.lastQueueVersion;
+  state.queueSnapshot = snapshot;
+
+  const c = snapshot.counts;
+  lblQueueSummaryBadge.textContent = `Q:${snapshot.queuedCount} R:${snapshot.activeCount}`;
+  lblQueueCountsLine.textContent = `Queued: ${c.queued} · Active: ${c.rendering} · Done: ${c.complete} · Failed: ${c.failed} · Cancelled: ${c.cancelled}`;
+  btnClearCompleted.disabled = c.complete + c.cancelled + c.failed === 0;
+
+  const activeItem = snapshot.items.find((i) => i.status === "rendering") ?? null;
+  if (activeItem) {
+    state.activeJobId = activeItem.jobId;
+    btnCancelRender.disabled = false;
+  } else if (!state.renderSubmitInFlight) {
+    state.activeJobId = null;
+    btnCancelRender.disabled = true;
+  }
+
+  if (snapshot.items.length > 0 && !state.selectedLogJobId) {
+    void selectLogJob(snapshot.items[snapshot.items.length - 1].jobId);
+  } else {
+    renderQueueItemsList();
+  }
+  syncExportReadyState();
+}
+
+function formatThroughputPair(
+  ar: RuntimeTelemetrySnapshot["activeRender"]
+): { rateText: string; etaText: string } {
+  if (!ar) {
+    return { rateText: "N/A", etaText: "N/A" };
+  }
+  const parts: string[] = [];
+  if (ar.captureFps !== null) parts.push(`Cap ${ar.captureFps} fps`);
+  if (ar.encodeFps !== null) parts.push(`Enc ${ar.encodeFps} fps`);
+  if (parts.length === 0) {
+    parts.push(ar.throughputFps !== null ? `${ar.throughputFps} fps` : "N/A");
+  }
+  return {
+    rateText: parts.join(" · "),
+    etaText: formatTelemetryMetric(ar.etaSeconds, "s"),
+  };
+}
+
+function applyRuntimeTelemetry(snap: RuntimeTelemetrySnapshot): void {
+  if (state.isDisposed) return;
+  if (snap.sampledAtMs < state.lastTelemetrySampledAtMs) {
+    return; // Ignore older telemetry packet
+  }
+  state.lastTelemetrySampledAtMs = snap.sampledAtMs;
+  state.telemetry = snap;
+
+  const electronMem =
+    snap.memoryStatus === "available" && snap.totalWorkingSetMB !== null
+      ? `${snap.totalWorkingSetMB} MB (${snap.processCount}p)`
+      : "N/A";
+  const rate = formatThroughputPair(snap.activeRender);
+
+  lblStatusTelemetry.textContent =
+    `Electron RAM: ${electronMem} · Ext Worker RAM: N/A · Render: ${rate.rateText} · ETA: ${rate.etaText} · Queue: ${snap.queue.activeCount}/${snap.queue.queuedCount}`;
+  lblRenderThroughput.textContent = `${rate.rateText} · ETA: ${rate.etaText}`;
+}
+
+function applyTerminalResultToProgressBox(res: RenderJobResult): void {
+  lblRenderElapsed.textContent = `${(res.wallMs / 1000).toFixed(2)}s`;
+  lblRenderThroughput.textContent = "N/A · ETA: N/A";
+
+  if (res.status === "complete") {
+    state.completedJobId = res.jobId;
+    progressFill.style.width = "100%";
+    lblRenderStage.textContent = "Completed";
+    if (res.framesRendered !== null && res.totalFrames !== null) {
+      lblRenderFrames.textContent = `${res.framesRendered} / ${res.totalFrames}`;
+    }
+    lblRenderOutcome.textContent = `Complete (${res.outcome})`;
+    lblRenderOutcome.className = "mono text-ok";
+    btnOpenOutput.disabled = false;
+  } else if (res.status === "cancelled") {
+    lblRenderStage.textContent = "Cancelled";
+    lblRenderOutcome.textContent = `Cancelled: ${res.errorReason ?? res.errorName ?? "user"}`;
+    lblRenderOutcome.className = "mono text-warn";
+  } else {
+    lblRenderStage.textContent = "Failed";
+    lblRenderOutcome.textContent = `Failed: ${res.errorName ?? "Error"} — ${res.errorMessage ?? ""}`;
+    lblRenderOutcome.className = "mono text-err";
+  }
+}
+
+let enqueueRequestInFlight = false;
+
+btnRender.addEventListener("click", async () => {
+  if (state.renderSubmitInFlight || enqueueRequestInFlight) return;
+  const payload = collectValidatedExportPayload();
+  if (!payload) return;
+
+  state.renderSubmitInFlight = true;
   state.completedJobId = null;
   state.renderStartedAtMs = Date.now();
   btnRender.disabled = true;
@@ -1216,56 +1562,96 @@ btnRender.addEventListener("click", async () => {
   lblRenderStage.textContent = "Starting worker...";
   lblRenderFrames.textContent = "-";
   lblRenderElapsed.textContent = "0.0s";
+  lblRenderThroughput.textContent = "N/A · ETA: N/A";
   lblRenderOutcome.textContent = "Rendering...";
   lblRenderOutcome.className = "mono";
 
   try {
-    const res = await window.mfStudio.startSessionRender({
-      sessionId: state.session.sessionId,
-      format,
-      quality,
-      fps: exportFps,
-      crf,
-      exportTicketId: state.exportTicketId,
-    });
-    state.activeJobId = null;
-    state.exportTicketId = undefined;
-    btnRender.disabled = false;
-    btnCancelRender.disabled = true;
-    lblRenderElapsed.textContent = `${(res.wallMs / 1000).toFixed(2)}s`;
-
-    if (res.status === "complete") {
-      state.completedJobId = res.jobId;
-      progressFill.style.width = "100%";
-      lblRenderStage.textContent = "Completed";
-      if (res.framesRendered !== null && res.totalFrames !== null) {
-        lblRenderFrames.textContent = `${res.framesRendered} / ${res.totalFrames}`;
-      }
-      lblRenderOutcome.textContent = `Complete (${res.outcome})`;
-      lblRenderOutcome.className = "mono text-ok";
-      btnOpenOutput.disabled = false;
-    } else if (res.status === "cancelled") {
-      lblRenderStage.textContent = "Cancelled";
-      lblRenderOutcome.textContent = `Cancelled: ${res.errorReason ?? res.errorName ?? "user"}`;
-      lblRenderOutcome.className = "mono text-warn";
-    } else {
-      lblRenderStage.textContent = "Failed";
-      lblRenderOutcome.textContent = `Failed: ${res.errorName ?? "Error"} — ${res.errorMessage ?? ""}`;
-      lblRenderOutcome.className = "mono text-err";
+    const res = await window.mfStudio.startSessionRender(payload);
+    if (!state.isDisposed) {
+      applyTerminalResultToProgressBox(res);
     }
   } catch (err: unknown) {
+    if (!state.isDisposed) {
+      lblRenderStage.textContent = "Error";
+      lblRenderOutcome.textContent = err instanceof Error ? err.message : String(err);
+      lblRenderOutcome.className = "mono text-err";
+    }
+  } finally {
+    state.renderSubmitInFlight = false;
     state.activeJobId = null;
-    btnRender.disabled = false;
-    btnCancelRender.disabled = true;
-    lblRenderStage.textContent = "Error";
-    lblRenderOutcome.textContent = err instanceof Error ? err.message : String(err);
-    lblRenderOutcome.className = "mono text-err";
+    if (!state.isDisposed) {
+      syncExportReadyState();
+      btnCancelRender.disabled = !(state.queueSnapshot && state.queueSnapshot.activeCount > 0);
+    }
+  }
+});
+
+btnAddToQueue.addEventListener("click", async () => {
+  if (enqueueRequestInFlight) return;
+  const payload = collectValidatedExportPayload();
+  if (!payload) return;
+
+  enqueueRequestInFlight = true;
+  btnAddToQueue.disabled = true;
+  btnRender.disabled = true;
+
+  try {
+    const item = await window.mfStudio.enqueueRenderJob(payload);
+    if (!state.isDisposed) {
+      void selectLogJob(item.jobId);
+      lblExportValidation.textContent = "";
+    }
+  } catch (err: unknown) {
+    if (!state.isDisposed) {
+      lblExportValidation.textContent = err instanceof Error ? err.message : String(err);
+    }
+  } finally {
+    enqueueRequestInFlight = false;
+    if (!state.isDisposed) {
+      syncExportReadyState();
+    }
   }
 });
 
 btnCancelRender.addEventListener("click", async () => {
-  if (!state.activeJobId) return;
-  await window.mfStudio.cancelSessionRender(state.activeJobId);
+  const targetJob = state.activeJobId ?? state.queueSnapshot?.items.find((i) => i.status === "rendering")?.jobId;
+  if (!targetJob) return;
+  await window.mfStudio.cancelQueueItem(targetJob);
+});
+
+btnClearCompleted.addEventListener("click", async () => {
+  await window.mfStudio.clearFinishedQueueItems();
+});
+
+btnExportJobLog.addEventListener("click", async () => {
+  if (!state.selectedLogJobId) return;
+  btnExportJobLog.disabled = true;
+  lblLogExportStatus.textContent = "Opening save dialog...";
+  lblLogExportStatus.className = "mono";
+  try {
+    const res = await window.mfStudio.exportRenderJobLog(state.selectedLogJobId);
+    if (state.isDisposed) return;
+    if (res.canceled) {
+      lblLogExportStatus.textContent = "Export canceled (no file written)";
+      lblLogExportStatus.className = "mono text-warn";
+    } else if (res.ok) {
+      lblLogExportStatus.textContent = `Exported: ${res.exportedFileName ?? "render-log.json"}`;
+      lblLogExportStatus.className = "mono text-ok";
+    } else {
+      lblLogExportStatus.textContent = `Export failed: ${res.error ?? "unknown error"}`;
+      lblLogExportStatus.className = "mono text-err";
+    }
+  } catch (err: unknown) {
+    if (!state.isDisposed) {
+      lblLogExportStatus.textContent = `Export error: ${err instanceof Error ? err.message : String(err)}`;
+      lblLogExportStatus.className = "mono text-err";
+    }
+  } finally {
+    if (!state.isDisposed) {
+      btnExportJobLog.disabled = !state.selectedJobLog;
+    }
+  }
 });
 
 btnOpenOutput.addEventListener("click", async () => {
@@ -1273,43 +1659,144 @@ btnOpenOutput.addEventListener("click", async () => {
   await window.mfStudio.openOutputLocation(state.completedJobId);
 });
 
-window.mfStudio.onRenderProgress((ev: any) => {
-  if (ev?.jobId) state.activeJobId = ev.jobId;
-  lblRenderStage.textContent = ev?.stageCode ?? ev?.currentStage ?? "render";
-  const doneF = typeof ev?.framesRendered === "number" ? ev.framesRendered : null;
-  const totalF = typeof ev?.totalFrames === "number" && ev.totalFrames > 0 ? ev.totalFrames : null;
-  if (doneF !== null && totalF !== null) {
-    const pct = Math.max(0, Math.min(100, Math.round((doneF / totalF) * 100)));
-    lblRenderFrames.textContent = `${doneF} / ${totalF} (${pct}%)`;
-    progressFill.style.width = `${pct}%`;
-  } else if (typeof ev?.progress === "number") {
-    const pct = Math.max(0, Math.min(100, Math.round(ev.progress * 100)));
-    progressFill.style.width = `${pct}%`;
-  }
-  if (state.renderStartedAtMs !== null) {
-    lblRenderElapsed.textContent = `${((Date.now() - state.renderStartedAtMs) / 1000).toFixed(1)}s`;
-  }
-});
+const activeCleanupFns: Array<() => void> = [];
 
-window.mfStudio.onSecurityViolation((ev: any) => {
-  state.violationCount += 1;
-  lblViolationCountBadge.textContent = String(state.violationCount);
-  if (state.violationCount === 1) {
-    securityLog.innerHTML = "";
+function disposeUiListeners(): void {
+  state.isDisposed = true;
+  while (activeCleanupFns.length > 0) {
+    const fn = activeCleanupFns.pop();
+    try {
+      fn?.();
+    } catch {
+      // Best-effort cleanup
+    }
   }
-  const row = document.createElement("div");
-  row.className = "text-err";
-  row.textContent = `[${ev?.source ?? "security"}] ${ev?.reason ?? "blocked"}: ${ev?.url ?? ""}`;
-  securityLog.prepend(row);
-});
+}
 
-new ResizeObserver(() => syncViewportToMain()).observe(viewportStage);
-window.addEventListener("resize", syncViewportToMain);
+function bindStudioListeners(): void {
+  while (activeCleanupFns.length > 0) {
+    const fn = activeCleanupFns.pop();
+    try {
+      fn?.();
+    } catch {
+      // Ignore cleanup failures
+    }
+  }
+  state.isDisposed = false;
+
+  activeCleanupFns.push(
+    window.mfStudio.onRenderProgress((ev: RenderProgressEvent) => {
+      if (state.isDisposed) return;
+      if (ev?.jobId) {
+        state.activeJobId = ev.jobId;
+        state.activeProgressByJobId[ev.jobId] = {
+          stage: ev.stageCode ?? ev.currentStage ?? "render",
+          framesRendered: typeof ev.framesRendered === "number" ? ev.framesRendered : null,
+          totalFrames: typeof ev.totalFrames === "number" && ev.totalFrames > 0 ? ev.totalFrames : null,
+          progress: typeof ev.progress === "number" ? ev.progress : 0,
+        };
+      }
+      if (state.renderStartedAtMs === null) {
+        state.renderStartedAtMs = Date.now();
+      }
+      lblRenderStage.textContent = ev?.stageCode ?? ev?.currentStage ?? "render";
+      const doneF = typeof ev?.framesRendered === "number" ? ev.framesRendered : null;
+      const totalF = typeof ev?.totalFrames === "number" && ev.totalFrames > 0 ? ev.totalFrames : null;
+      if (doneF !== null && totalF !== null) {
+        const pct = Math.max(0, Math.min(100, Math.round((doneF / totalF) * 100)));
+        lblRenderFrames.textContent = `${doneF} / ${totalF} (${pct}%)`;
+        progressFill.style.width = `${pct}%`;
+      } else if (typeof ev?.progress === "number") {
+        const pct = Math.max(0, Math.min(100, Math.round(ev.progress * 100)));
+        progressFill.style.width = `${pct}%`;
+      }
+      if (state.renderStartedAtMs !== null) {
+        lblRenderElapsed.textContent = `${((Date.now() - state.renderStartedAtMs) / 1000).toFixed(1)}s`;
+      }
+      renderQueueItemsList();
+    }),
+    window.mfStudio.onRenderComplete((res: RenderJobResult) => {
+      if (state.isDisposed || !res) return;
+      delete state.activeProgressByJobId[res.jobId];
+      state.renderStartedAtMs = null;
+      applyTerminalResultToProgressBox(res);
+      if (res.jobId === state.selectedLogJobId) {
+        void selectLogJob(res.jobId);
+      }
+    }),
+    window.mfStudio.onQueueUpdated((snapshot: RenderQueueSnapshot) => {
+      applyRenderQueueSnapshot(snapshot);
+    }),
+    window.mfStudio.onRuntimeTelemetry((snapshot: RuntimeTelemetrySnapshot) => {
+      applyRuntimeTelemetry(snapshot);
+    }),
+    window.mfStudio.onRenderLogUpdated((payload: { jobId: string; entry: RenderLogEntry }) => {
+      if (state.isDisposed || !payload || payload.jobId !== state.selectedLogJobId) return;
+      if (!state.selectedJobLog) {
+        void selectLogJob(payload.jobId);
+        return;
+      }
+      const entries = state.selectedJobLog.entries;
+      const last = entries[entries.length - 1];
+      if (
+        last &&
+        last.timestampMs === payload.entry.timestampMs &&
+        last.event === payload.entry.event &&
+        last.message === payload.entry.message
+      ) {
+        return;
+      }
+      if (entries.length >= state.selectedJobLog.maxEntriesPerJob) {
+        entries.shift();
+        state.selectedJobLog.truncated = true;
+        state.selectedJobLog.droppedEntryCount += 1;
+      }
+      entries.push(payload.entry);
+      renderSelectedJobLog();
+      if (payload.entry.event === "final_render_summary") {
+        void selectLogJob(payload.jobId);
+      }
+    }),
+    window.mfStudio.onSecurityViolation((ev: any) => {
+      if (state.isDisposed) return;
+      state.violationCount += 1;
+      lblViolationCountBadge.textContent = String(state.violationCount);
+      if (state.violationCount === 1) {
+        securityLog.innerHTML = "";
+      }
+      const row = document.createElement("div");
+      row.className = "text-err";
+      row.textContent = `[${ev?.source ?? "security"}] ${ev?.reason ?? "blocked"}: ${ev?.url ?? ""}`;
+      securityLog.prepend(row);
+    })
+  );
+
+  const ro = new ResizeObserver(() => syncViewportToMain());
+  ro.observe(viewportStage);
+  const onResize = () => syncViewportToMain();
+  window.addEventListener("resize", onResize);
+  activeCleanupFns.push(
+    () => ro.disconnect(),
+    () => window.removeEventListener("resize", onResize)
+  );
+}
+
+bindStudioListeners();
+window.addEventListener("beforeunload", disposeUiListeners);
 updateExportInspectorVisibility();
 
 void window.mfStudio.getRuntimeInfo().then((info) => {
+  if (state.isDisposed) return;
   const p = info.pinnedRuntime;
   lblRuntimeVersions.textContent = `Engine ${p.hyperframesEngineVersion} · Producer ${p.hyperframesProducerVersion} · Electron ${info.electronVersion ?? p.electronVersion} · Chrome ${p.chromeHeadlessShellVersion}`;
+});
+
+void window.mfStudio.getRenderQueueSnapshot().then((snap) => {
+  applyRenderQueueSnapshot(snap);
+});
+
+void window.mfStudio.getRuntimeTelemetry().then((snap) => {
+  applyRuntimeTelemetry(snap);
 });
 
 // Expose read-only UI test inspection hooks strictly without exposing Node/FS
@@ -1327,5 +1814,13 @@ void window.mfStudio.getRuntimeInfo().then((info) => {
     analysisSummary: state.analysis?.summary ?? null,
     selectedDiagId: state.selectedDiagId,
     activeDiagFilter: state.activeDiagFilter,
+    queueSnapshot: state.queueSnapshot,
+    selectedLogJobId: state.selectedLogJobId,
+    selectedJobLog: state.selectedJobLog,
+    telemetry: state.telemetry,
+    activeListenerCount: activeCleanupFns.length,
+    isDisposed: state.isDisposed,
   }),
+  rebindListenersForTest: () => bindStudioListeners(),
+  disposeListenersForTest: () => disposeUiListeners(),
 };

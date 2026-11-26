@@ -31,11 +31,21 @@ export const IPC_CHANNELS = {
   chooseExportPath: "studio:chooseExportPath",
   startSessionRender: "studio:startSessionRender",
   cancelSessionRender: "studio:cancelSessionRender",
+  getRenderQueueSnapshot: "studio:getRenderQueueSnapshot",
+  enqueueRenderJob: "studio:enqueueRenderJob",
+  cancelQueueItem: "studio:cancelQueueItem",
+  clearFinishedQueueItems: "studio:clearFinishedQueueItems",
+  getRenderJobLog: "studio:getRenderJobLog",
+  exportRenderJobLog: "studio:exportRenderJobLog",
+  getRuntimeTelemetry: "studio:getRuntimeTelemetry",
   openOutputLocation: "studio:openOutputLocation",
   eventPreviewStatus: "studio:eventPreviewStatus",
   eventSecurityViolation: "studio:eventSecurityViolation",
   eventRenderProgress: "studio:eventRenderProgress",
   eventRenderComplete: "studio:eventRenderComplete",
+  eventQueueUpdated: "studio:eventQueueUpdated",
+  eventRuntimeTelemetry: "studio:eventRuntimeTelemetry",
+  eventRenderLogUpdated: "studio:eventRenderLogUpdated",
 } as const;
 
 export interface PreviewBounds {

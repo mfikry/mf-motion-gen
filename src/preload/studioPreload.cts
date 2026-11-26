@@ -23,10 +23,20 @@ const CHANNELS = {
   chooseExportPath: "studio:chooseExportPath",
   startSessionRender: "studio:startSessionRender",
   cancelSessionRender: "studio:cancelSessionRender",
+  getRenderQueueSnapshot: "studio:getRenderQueueSnapshot",
+  enqueueRenderJob: "studio:enqueueRenderJob",
+  cancelQueueItem: "studio:cancelQueueItem",
+  clearFinishedQueueItems: "studio:clearFinishedQueueItems",
+  getRenderJobLog: "studio:getRenderJobLog",
+  exportRenderJobLog: "studio:exportRenderJobLog",
+  getRuntimeTelemetry: "studio:getRuntimeTelemetry",
   openOutputLocation: "studio:openOutputLocation",
   eventSecurityViolation: "studio:eventSecurityViolation",
   eventRenderProgress: "studio:eventRenderProgress",
   eventRenderComplete: "studio:eventRenderComplete",
+  eventQueueUpdated: "studio:eventQueueUpdated",
+  eventRuntimeTelemetry: "studio:eventRuntimeTelemetry",
+  eventRenderLogUpdated: "studio:eventRenderLogUpdated",
 };
 
 function subscribe(channel: string, listener: (payload: unknown) => void): () => void {
@@ -86,6 +96,27 @@ contextBridge.exposeInMainWorld("mfStudio", {
   }) => ipcRenderer.invoke(CHANNELS.startSessionRender, payload),
   cancelSessionRender: (jobId: string) =>
     ipcRenderer.invoke(CHANNELS.cancelSessionRender, { jobId }),
+  getRenderQueueSnapshot: () =>
+    ipcRenderer.invoke(CHANNELS.getRenderQueueSnapshot),
+  enqueueRenderJob: (payload: {
+    sessionId: string;
+    format: "mp4" | "mov";
+    quality: "draft" | "standard" | "high";
+    fps?: { num: number; den: number };
+    crf?: number;
+    exportTicketId?: string;
+    workers?: number;
+  }) => ipcRenderer.invoke(CHANNELS.enqueueRenderJob, payload),
+  cancelQueueItem: (jobId: string) =>
+    ipcRenderer.invoke(CHANNELS.cancelQueueItem, { jobId }),
+  clearFinishedQueueItems: () =>
+    ipcRenderer.invoke(CHANNELS.clearFinishedQueueItems),
+  getRenderJobLog: (jobId: string) =>
+    ipcRenderer.invoke(CHANNELS.getRenderJobLog, { jobId }),
+  exportRenderJobLog: (jobId: string) =>
+    ipcRenderer.invoke(CHANNELS.exportRenderJobLog, { jobId }),
+  getRuntimeTelemetry: () =>
+    ipcRenderer.invoke(CHANNELS.getRuntimeTelemetry),
   openOutputLocation: (jobId: string) =>
     ipcRenderer.invoke(CHANNELS.openOutputLocation, { jobId }),
   onSecurityViolation: (cb: (ev: unknown) => void) =>
@@ -94,4 +125,10 @@ contextBridge.exposeInMainWorld("mfStudio", {
     subscribe(CHANNELS.eventRenderProgress, cb),
   onRenderComplete: (cb: (ev: unknown) => void) =>
     subscribe(CHANNELS.eventRenderComplete, cb),
+  onQueueUpdated: (cb: (ev: unknown) => void) =>
+    subscribe(CHANNELS.eventQueueUpdated, cb),
+  onRuntimeTelemetry: (cb: (ev: unknown) => void) =>
+    subscribe(CHANNELS.eventRuntimeTelemetry, cb),
+  onRenderLogUpdated: (cb: (ev: unknown) => void) =>
+    subscribe(CHANNELS.eventRenderLogUpdated, cb),
 });

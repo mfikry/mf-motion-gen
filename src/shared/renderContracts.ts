@@ -130,3 +130,197 @@ export type WorkerToMainMessage =
   | { type: "complete"; result: RenderJobResult }
   | { type: "failed"; result: RenderJobResult }
   | { type: "workerInternalError"; message: string; stack?: string };
+
+export type RenderQueueItemStatus =
+  | "queued"
+  | "rendering"
+  | "complete"
+  | "cancelled"
+  | "failed";
+
+export interface RenderQueueItemSnapshot {
+  jobId: string;
+  sessionId: string;
+  title: string;
+  format: RenderFormat;
+  fps: FpsFraction;
+  outputPath: string;
+  boundStageDir: string;
+  status: RenderQueueItemStatus;
+  enqueuedAtMs: number;
+  startedAtMs: number | null;
+  finishedAtMs: number | null;
+  cancelReason?: string;
+  errorMessage?: string;
+  result?: RenderJobResult;
+}
+
+export interface RenderQueueSnapshot {
+  version: number;
+  maxCapacity: number;
+  activeCount: number;
+  queuedCount: number;
+  counts: {
+    queued: number;
+    rendering: number;
+    complete: number;
+    cancelled: number;
+    failed: number;
+  };
+  items: RenderQueueItemSnapshot[];
+}
+
+export type RenderLogLevel = "debug" | "info" | "warning" | "error";
+
+export type RenderLifecycleEventName =
+  | "job_created"
+  | "job_enqueued"
+  | "job_started"
+  | "job_completed"
+  | "job_failed"
+  | "job_cancelled"
+  | "job_rejected_preflight"
+  | "job_rejected_session"
+  | "queue_shutdown"
+  | "preflight_validation"
+  | "worker_spawned"
+  | "worker_ready"
+  | "stage_transition"
+  | "capture_progress"
+  | "encoding_progress"
+  | "worker_stderr"
+  | "worker_exit"
+  | "cancellation_requested"
+  | "watchdog_timeout"
+  | "process_tree_cleanup"
+  | "final_render_summary";
+
+export interface RenderLogEntry {
+  timestamp: string;
+  timestampMs: number;
+  jobId: string;
+  sessionId: string | null;
+  level: RenderLogLevel;
+  event: RenderLifecycleEventName;
+  stage: string | null;
+  message: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RenderThroughputMetrics {
+  throughputFps: number | null;
+  captureFps: number | null;
+  encodeFps: number | null;
+  etaSeconds: number | null;
+  framesRendered: number | null;
+  totalFrames: number | null;
+  elapsedMs: number | null;
+  isEstimateValid: boolean;
+  unavailableReason: string | null;
+}
+
+export interface RenderStageHistoryEntry {
+  stage: string;
+  timestamp: string;
+  elapsedMs: number;
+}
+
+export interface RenderJobLogSummary {
+  jobId: string;
+  sessionId: string | null;
+  title: string;
+  status: RenderQueueItemStatus;
+  format: RenderFormat;
+  fps: FpsFraction;
+  createdAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  preflightSummary: {
+    ok: boolean;
+    blockerCodes: string[];
+    warningCodes: string[];
+    checkedAssetCount: number;
+    elapsedMs: number | null;
+  } | null;
+  stageHistory: RenderStageHistoryEntry[];
+  workerPid: number | null;
+  workerExitCode: number | null;
+  workerStderrStatus: "captured" | "unavailable";
+  workerStderr: string | null;
+  ffmpegStderrStatus: "captured" | "unavailable";
+  ffmpegStderr: string | null;
+  failureReason: string | null;
+  cancellationReason: string | null;
+  watchdogReason: string | null;
+  cleanupActionCount: number;
+  survivingOrphans: number | null;
+  finalMetrics: {
+    wallMs: number | null;
+    framesRendered: number | null;
+    totalFrames: number | null;
+    throughputFps: number | null;
+    captureFps: number | null;
+    encodeFps: number | null;
+  };
+  truncated: boolean;
+  droppedEntryCount: number;
+  maxEntriesPerJob: number;
+  entries: RenderLogEntry[];
+}
+
+export interface ExportRenderLogResult {
+  canceled: boolean;
+  ok: boolean;
+  exportedFileName?: string;
+  error?: string;
+}
+
+export interface ProcessMetricTelemetryItem {
+  pid: number | null;
+  creationTime: number | null;
+  type: string;
+  name: string | null;
+  workingSetMB: number | null;
+  peakWorkingSetMB: number | null;
+  privateBytesMB: number | null;
+  cpuPercent: number | null;
+}
+
+export interface ActiveRenderTelemetrySnapshot {
+  jobId: string;
+  stage: string | null;
+  framesRendered: number | null;
+  totalFrames: number | null;
+  elapsedMs: number | null;
+  throughputFps: number | null;
+  captureFps: number | null;
+  encodeFps: number | null;
+  etaSeconds: number | null;
+}
+
+export interface RuntimeTelemetrySnapshot {
+  sampledAtIso: string;
+  sampledAtMs: number;
+  pollIntervalMs: number;
+  memoryStatus: "available" | "N/A";
+  totalWorkingSetMB: number | null;
+  peakWorkingSetMB: number | null;
+  processCount: number;
+  includedProcessTypes: string[];
+  aggregationMethod: string;
+  externalProcessesNote: string;
+  processes: ProcessMetricTelemetryItem[];
+  queue: {
+    activeCount: number;
+    queuedCount: number;
+    activeJobId: string | null;
+  };
+  activeRender: ActiveRenderTelemetrySnapshot | null;
+}
+
+export function formatTelemetryMetric(val: number | null | undefined, unit = ""): string {
+  if (typeof val !== "number" || !Number.isFinite(val)) {
+    return "N/A";
+  }
+  return unit ? `${val}${unit}` : String(val);
+}

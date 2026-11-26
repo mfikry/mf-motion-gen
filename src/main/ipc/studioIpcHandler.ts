@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { BrowserWindow, dialog, ipcMain, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import {
   IPC_CHANNELS,
   type ApplyDiagnosticFixResult,
@@ -21,12 +21,27 @@ import {
   type SessionRenderRequestPayload,
   type ViewportScaleMode,
 } from "../../shared/previewContracts.js";
-import { PINNED_RUNTIME, type PreflightResult, type RenderJobRequest } from "../../shared/renderContracts.js";
+import {
+  PINNED_RUNTIME,
+  type ExportRenderLogResult,
+  type PreflightResult,
+  type RenderJobLogSummary,
+  type RenderJobRequest,
+  type RenderQueueSnapshot,
+  type RuntimeTelemetrySnapshot,
+} from "../../shared/renderContracts.js";
 import { discoverHtmlCandidates, stageIsolatedFolderCopy } from "../import/projectImporter.js";
 import { extractZipSecurely } from "../import/secureZipExtractor.js";
 import { purgeSessionDirectoryAsync } from "../import/sessionFsUtils.js";
+import {
+  exportRenderLogWithSaveDialog,
+  RenderLogStore,
+  validateRenderJobId,
+} from "../logging/renderLogStore.js";
 import { PreviewContainerManager } from "../preview/previewContainerManager.js";
 import { RenderCoordinator } from "../render/renderCoordinator.js";
+import { RenderQueueManager } from "../render/renderQueueManager.js";
+import { RuntimeTelemetryService } from "../telemetry/runtimeTelemetryService.js";
 
 const MAX_PASTE_HTML_BYTES = 2 * 1024 * 1024;
 const ALLOWED_FORMATS = new Set(["mp4", "mov"]);
@@ -229,6 +244,64 @@ export function registerStudioIpcHandlers(
   const exportTickets = new Map<string, ExportTicket>();
   const completedOutputs = new Map<string, string>();
   const pendingImports = new Map<string, PendingImportEntry>();
+  let renderJobSeq = 0;
+
+  const logStore = new RenderLogStore({
+    onLogUpdated: (jobId, entry) => {
+      if (!studioWindow.isDestroyed() && !studioContents.isDestroyed()) {
+        studioContents.send(IPC_CHANNELS.eventRenderLogUpdated, { jobId, entry });
+      }
+    },
+  });
+
+  const renderQueue = new RenderQueueManager({
+    runner: coordinator,
+    logStore,
+    isSessionValid: (sid, boundStageDir) => {
+      const s = previewManager.getSession(sid);
+      if (!s) return false;
+      try {
+        return fs.realpathSync(s.stageDir) === boundStageDir;
+      } catch {
+        return false;
+      }
+    },
+    onQueueChanged: (snapshot) => {
+      if (!studioWindow.isDestroyed() && !studioContents.isDestroyed()) {
+        studioContents.send(IPC_CHANNELS.eventQueueUpdated, snapshot);
+      }
+    },
+    onJobCompleted: (_item, result) => {
+      if (result.status === "complete") {
+        completedOutputs.set(result.jobId, result.outputPath);
+      }
+      if (!studioWindow.isDestroyed() && !studioContents.isDestroyed()) {
+        studioContents.send(IPC_CHANNELS.eventRenderComplete, result);
+      }
+    },
+  });
+
+  const telemetryService = new RuntimeTelemetryService({
+    getAppMetrics: () => app.getAppMetrics(),
+    getQueueAndRenderState: () => {
+      const snap = renderQueue.getSnapshot();
+      const activeItem = snap.items.find((i) => i.status === "rendering");
+      return {
+        queue: {
+          activeCount: snap.activeCount,
+          queuedCount: snap.queuedCount,
+          activeJobId: activeItem?.jobId ?? null,
+        },
+        activeRender: renderQueue.getActiveRenderTelemetry(),
+      };
+    },
+  });
+  telemetryService.attachWindow(studioWindow, IPC_CHANNELS.eventRuntimeTelemetry);
+  telemetryService.start();
+
+  previewManager.setBeforeSessionPurgeHandler((sessionId) =>
+    renderQueue.invalidateSession(sessionId, "session_closed_or_replaced")
+  );
 
   async function finalizePendingImport(
     pending: PendingImportEntry,
@@ -610,8 +683,7 @@ export function registerStudioIpcHandlers(
     }
   );
 
-  ipcMain.handle(IPC_CHANNELS.startSessionRender, async (event, payload) => {
-    assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+  function enqueueValidatedSessionRender(payload: unknown) {
     const valid = validateSessionRenderPayload(payload);
     const session = previewManager.getSession(valid.sessionId);
     if (!session) {
@@ -623,7 +695,8 @@ export function registerStudioIpcHandlers(
       throw new Error("Export FPS is required when composition source FPS is Unknown");
     }
 
-    const jobId = `render_${session.sessionId.slice(0, 8)}_${Date.now()}`;
+    renderJobSeq += 1;
+    const jobId = `render_${session.sessionId.slice(0, 8)}_${Date.now()}_${renderJobSeq}`;
     const ext = valid.format === "mov" ? "mov" : "mp4";
     let outputPath = path.join(renderOutputBase, `${jobId}.${ext}`);
 
@@ -650,31 +723,92 @@ export function registerStudioIpcHandlers(
       strictness: "strict",
     };
 
-    const outcome = await coordinator.render(req, (progressEvent) => {
-      if (!studioWindow.isDestroyed()) {
-        studioContents.send(IPC_CHANNELS.eventRenderProgress, progressEvent);
-      }
+    return renderQueue.enqueue({
+      sessionId: session.sessionId,
+      title: session.title,
+      request: req,
+      onProgress: (progressEvent) => {
+        if (!studioWindow.isDestroyed() && !studioContents.isDestroyed()) {
+          studioContents.send(IPC_CHANNELS.eventRenderProgress, progressEvent);
+        }
+      },
     });
+  }
 
-    if (outcome.execution.result.status === "complete") {
-      completedOutputs.set(outcome.execution.result.jobId, outcome.execution.result.outputPath);
-    }
-
-    if (!studioWindow.isDestroyed()) {
-      studioContents.send(IPC_CHANNELS.eventRenderComplete, outcome.execution.result);
-    }
-    return outcome.execution.result;
+  ipcMain.handle(IPC_CHANNELS.startSessionRender, async (event, payload) => {
+    assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+    const { completion } = enqueueValidatedSessionRender(payload);
+    return completion;
   });
+
+  ipcMain.handle(IPC_CHANNELS.enqueueRenderJob, async (event, payload) => {
+    assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+    const { item } = enqueueValidatedSessionRender(payload);
+    return item;
+  });
+
+  ipcMain.handle(
+    IPC_CHANNELS.getRenderQueueSnapshot,
+    async (event): Promise<RenderQueueSnapshot> => {
+      assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+      return renderQueue.getSnapshot();
+    }
+  );
+
+  ipcMain.handle(IPC_CHANNELS.cancelQueueItem, async (event, payload: { jobId?: string }) => {
+    assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+    const jobId = validateRenderJobId(payload?.jobId);
+    return renderQueue.cancel(jobId, "studio_ui_cancelled");
+  });
+
+  ipcMain.handle(IPC_CHANNELS.clearFinishedQueueItems, async (event) => {
+    assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+    return { cleared: renderQueue.clearFinished() };
+  });
+
+  ipcMain.handle(
+    IPC_CHANNELS.getRenderJobLog,
+    async (event, payload: { jobId?: string }): Promise<RenderJobLogSummary> => {
+      assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+      const jobId = validateRenderJobId(payload?.jobId);
+      const summary = logStore.getJobLog(jobId);
+      if (!summary) {
+        throw new Error(`No render log available for job "${jobId}"`);
+      }
+      return summary;
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.exportRenderJobLog,
+    async (event, payload: { jobId?: string }): Promise<ExportRenderLogResult> => {
+      assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+      return exportRenderLogWithSaveDialog({
+        logStore,
+        rawJobId: payload?.jobId,
+        defaultDir: renderOutputBase,
+        showSaveDialog: (opts) => dialog.showSaveDialog(studioWindow, opts),
+      });
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.getRuntimeTelemetry,
+    async (event): Promise<RuntimeTelemetrySnapshot> => {
+      assertAuthorizedStudioSender(event, studioContents, studioOrigin);
+      return telemetryService.getLatestOrSample();
+    }
+  );
 
   ipcMain.handle(IPC_CHANNELS.cancelSessionRender, async (event, payload: { jobId?: string }) => {
     assertAuthorizedStudioSender(event, studioContents, studioOrigin);
-    const jobId = assertNonEmptyString(payload?.jobId, "jobId");
-    return { cancelled: coordinator.cancel(jobId, "studio_ui_cancelled") };
+    const jobId = validateRenderJobId(payload?.jobId);
+    return { cancelled: renderQueue.cancel(jobId, "studio_ui_cancelled").cancelled };
   });
 
   ipcMain.handle(IPC_CHANNELS.openOutputLocation, async (event, payload: { jobId?: string }) => {
     assertAuthorizedStudioSender(event, studioContents, studioOrigin);
-    const jobId = assertNonEmptyString(payload?.jobId, "jobId");
+    const jobId = validateRenderJobId(payload?.jobId);
     const outputPath = completedOutputs.get(jobId);
     if (!outputPath || !fs.existsSync(outputPath)) {
       return { opened: false, reason: "Output file unavailable for this jobId" };
@@ -692,6 +826,7 @@ export function registerStudioIpcHandlers(
       return completedOutputs.get(jobId) ?? null;
     },
     async dispose() {
+      telemetryService.dispose();
       exportTickets.clear();
       completedOutputs.clear();
       for (const pending of pendingImports.values()) {
@@ -706,6 +841,7 @@ export function registerStudioIpcHandlers(
         }
       }
       await previewManager.disposeActiveSession();
+      await renderQueue.shutdown();
     },
   };
 }

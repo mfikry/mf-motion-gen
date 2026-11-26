@@ -298,6 +298,28 @@
     .diff-line-add { color: var(--ok); }
     .diff-line-del { color: var(--err); }
     .diff-line-hdr { color: var(--accent); }
+    .pill-queued { color: var(--text-muted); }
+    .pill-rendering { color: var(--accent); border-color: rgba(56, 189, 248, 0.5); }
+    .pill-complete, .pill-completed { color: var(--ok); border-color: rgba(74, 222, 128, 0.45); }
+    .pill-cancelled { color: var(--warn); border-color: rgba(251, 191, 36, 0.45); }
+    .pill-failed { color: var(--err); border-color: rgba(248, 113, 113, 0.5); }
+    .queue-item {
+      padding: 5px 6px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      cursor: pointer;
+    }
+    .queue-item:hover { background: rgba(56, 189, 248, 0.08); }
+    .queue-item.selected { background: rgba(2, 132, 199, 0.16); border-color: var(--accent); }
+    .queue-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+    .log-row { padding: 2px 3px; border-bottom: 1px solid rgba(30, 42, 68, 0.45); word-break: break-word; }
+    .log-level-debug { color: var(--text-dim); }
+    .log-level-info { color: var(--text-main); }
+    .log-level-warning { color: var(--warn); }
+    .log-level-error { color: var(--err); }
 
     /* 5. StatusBar */
     #statusBar {
@@ -506,6 +528,7 @@
         <div id="lblExportValidation" class="text-err" style="font-size:11px;min-height:14px;margin-bottom:6px;"></div>
         <div style="display:flex;gap:6px;">
           <button id="btnRender" class="primary" style="flex:1;" disabled>Render Export</button>
+          <button id="btnAddToQueue" title="Enqueue render job without blocking active render" disabled>+ Queue</button>
           <button id="btnCancelRender" class="danger" disabled>Cancel</button>
         </div>
       </section>
@@ -515,9 +538,38 @@
         <div class="kv"><span class="kv-label">Stage</span><span id="lblRenderStage" class="kv-val">Idle</span></div>
         <div class="kv"><span class="kv-label">Frames</span><span id="lblRenderFrames" class="kv-val mono">-</span></div>
         <div class="kv"><span class="kv-label">Elapsed</span><span id="lblRenderElapsed" class="kv-val mono">-</span></div>
+        <div class="kv"><span class="kv-label">Throughput / ETA</span><span id="lblRenderThroughput" class="kv-val mono">N/A · ETA: N/A</span></div>
         <div class="progress-track"><div id="progressFill"></div></div>
         <div id="lblRenderOutcome" class="mono" style="min-height:16px;margin-bottom:6px;">Ready</div>
         <button id="btnOpenOutput" disabled style="width:100%;">Open Output Location</button>
+      </section>
+
+      <section id="renderQueueCard" class="card">
+        <h3>
+          Render Queue
+          <span style="display:flex;gap:4px;align-items:center;">
+            <span id="lblQueueSummaryBadge" class="mono">Q:0 R:0</span>
+            <button id="btnClearCompleted" style="padding:2px 6px;font-size:10px;" disabled>Clear Completed</button>
+          </span>
+        </h3>
+        <div id="lblQueueCountsLine" class="mono" style="font-size:10px;color:var(--text-dim);margin-bottom:5px;">
+          Queued: 0 · Active: 0 · Done: 0 · Failed: 0 · Cancelled: 0
+        </div>
+        <div id="listRenderQueue" class="list-box" style="max-height:140px;">No queued render jobs</div>
+      </section>
+
+      <section id="renderLogCard" class="card">
+        <h3>
+          Render Log Inspector
+          <span style="display:flex;gap:4px;align-items:center;">
+            <span id="lblLogSelectedJob" class="mono" style="color:var(--text-dim);">None</span>
+            <button id="btnExportJobLog" style="padding:2px 6px;font-size:10px;" disabled>Export Log</button>
+          </span>
+        </h3>
+        <div id="lblLogMetaLine" class="mono" style="font-size:10px;color:var(--text-dim);margin-bottom:4px;">Select a queue job to inspect logs</div>
+        <div id="lblLogTruncationWarn" class="text-warn hidden" style="font-size:10px;margin-bottom:4px;"></div>
+        <div id="listRenderLogs" class="list-box mono" style="max-height:150px;font-size:10px;">No render log selected</div>
+        <div id="lblLogExportStatus" class="mono" style="font-size:10px;margin-top:4px;min-height:14px;"></div>
       </section>
 
       <section class="card">
@@ -529,8 +581,9 @@
 
   <!-- Panel 5: StatusBar -->
   <footer id="statusBar">
-    <span id="lblRuntimeVersions" class="mono">Loading runtime versions...</span>
-    <span id="lblSecurityBoundary">Isolated WebContentsView · mf-asset:// · Offline-First</span>
+    <span id="lblRuntimeVersions" class="mono" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Loading runtime versions...</span>
+    <span id="lblStatusTelemetry" class="mono" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-muted);" title="Electron processes working set memory via app.getAppMetrics(); external child RAM is N/A">Electron RAM: N/A · Ext Worker RAM: N/A · Render: N/A · ETA: N/A · Queue: 0/0</span>
+    <span id="lblSecurityBoundary" style="white-space:nowrap;">Isolated mf-asset:// · Offline</span>
   </footer>
 
   <script type="module" src="../../dist/renderer/studioApp.js"></script>

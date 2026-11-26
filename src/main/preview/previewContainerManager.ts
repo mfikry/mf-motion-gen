@@ -84,9 +84,14 @@ export class PreviewContainerManager {
   private panelRect: PreviewBounds = { x: 320, y: 88, width: 640, height: 420 };
   private viewportMode: ViewportScaleMode = "fit";
   private readonly onViolation?: (ev: SecurityViolationEvent) => void;
+  private beforeSessionPurge?: (sessionId: string) => Promise<void>;
 
   constructor(onViolation?: (ev: SecurityViolationEvent) => void) {
     this.onViolation = onViolation;
+  }
+
+  setBeforeSessionPurgeHandler(handler: (sessionId: string) => Promise<void>): void {
+    this.beforeSessionPurge = handler;
   }
 
   attachHostWindow(win: BrowserWindow): void {
@@ -683,6 +688,10 @@ export class PreviewContainerManager {
     const current = this.activeSession;
     if (!current) return;
     this.activeSession = null;
+
+    if (this.beforeSessionPurge) {
+      await this.beforeSessionPurge(current.sessionId).catch(() => {});
+    }
 
     try {
       if (this.hostWindow) {

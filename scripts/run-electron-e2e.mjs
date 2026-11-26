@@ -11,6 +11,8 @@ const targetMap = {
   sprint3: "sprint3WorkbenchVerification.mjs",
   sprint4: "sprint4ImportAndAssetTreeVerification.mjs",
   sprint5: "sprint5StaticAnalyzerAndDiffVerification.mjs",
+  sprint6c: "sprint6WorkstreamCUiVerification.mjs",
+  sprint6d: "sprint6WorkstreamDParityAndBenchmark.mjs",
 };
 const target = targetMap[process.argv[2]] || "sprint1Verification.mjs";
 const electronExe = path.join(repoRoot, "node_modules", "electron", "dist", "electron.exe");
@@ -25,7 +27,7 @@ cleanEnv.MF_HEADLESS_WINDOW = "1";
 const res = spawnSync(electronExe, [mainJs], {
   env: cleanEnv,
   stdio: "inherit",
-  timeout: 180000,
+  timeout: process.env.MF_RUN_4K_BENCHMARK === "1" ? 600000 : 240000,
 });
 
 process.exit(res.status ?? 1);
